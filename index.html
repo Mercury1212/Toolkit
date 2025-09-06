@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tools Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --text-color: #333;
+            --header-bg: #2c3e50;
+            --header-text: #fff;
+            --card-bg: #fff;
+            --card-text: #333;
+            --card-desc: #666;
+            --icon-color: #3498db;
+            --accent-hover: #eaf3ff;
+        }
+
+        body.dark {
+            --bg-color: #181a1f;
+            --text-color: #e6e6e6;
+            --header-bg: #111;
+            --header-text: #f1f1f1;
+            --card-bg: #24262b;
+            --card-text: #e6e6e6;
+            --card-desc: #aaa;
+            --icon-color: #4aa3ff;
+            --accent-hover: #1f2a36;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        header {
+            background: var(--header-bg);
+            color: var(--header-text);
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--header-text);
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .tool-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s;
+            text-decoration: none;
+            color: var(--card-text);
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+            background: var(--accent-hover);
+        }
+
+        .tool-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: var(--icon-color);
+        }
+
+        .tool-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .tool-desc {
+            font-size: 0.9em;
+            color: var(--card-desc);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        🚀 My Tools Hub
+        <button class="toggle-btn" onclick="toggleDarkMode()">
+            <i class="fas fa-moon"></i>
+        </button>
+    </header>
+
+    <div class="container">
+        <a href="PasswordManager.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
+            <div class="tool-title">Password Manager</div>
+            <div class="tool-desc">Securely store and manage passwords</div>
+        </a>
+
+        <a href="WebAuthenticator.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#2ecc71;"><i class="fas fa-mobile-alt"></i></div>
+            <div class="tool-title">2FA Authenticator</div>
+            <div class="tool-desc">Save backup 2FA codes offline</div>
+        </a>
+
+        <a href="TextEncryptor.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#f39c12;"><i class="fas fa-key"></i></div>
+            <div class="tool-title">Text Encryptor</div>
+            <div class="tool-desc">Encrypt/decrypt text with Argon2 + AES</div>
+        </a>
+
+        <a href="SecurityToolkit.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#9b59b6;"><i class="fas fa-toolbox"></i></div>
+            <div class="tool-title">Security Toolkit</div>
+            <div class="tool-desc">Password generator & TOTP generator</div>
+        </a>
+
+        <a href="SimpleNotepad.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#1abc9c;"><i class="fas fa-sticky-note"></i></div>
+            <div class="tool-title">Notepad</div>
+            <div class="tool-desc">Simple online notepad with encryption</div>
+        </a>
+
+        <a href="SecureNotepad.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#3498db;"><i class="fas fa-sticky-note"></i></div>
+            <div class="tool-title">Secure Notepad</div>
+            <div class="tool-desc">Secure text notes with encryption</div>
+        </a>
+
+        <a href="Scrambler.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#e67e22;"><i class="fas fa-random"></i></div>
+            <div class="tool-title">Text Scrambler</div>
+            <div class="tool-desc">Reversible Text Scrambler with password protection</div>
+        </a>
+
+        <a href="FileLocker.html" target="_blank" class="tool-card">
+            <div class="tool-icon" style="color:#16a085;"><i class="fas fa-lock"></i></div>
+            <div class="tool-title">File Locker</div>
+            <div class="tool-desc">Encrypt files using Argon2id + AES</div>
+        </a>
+
+    </div>
+
+    <script>
+        // Dark mode toggle with persistence
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark");
+            updateToggleIcon();
+            localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+        }
+
+        function updateToggleIcon() {
+            const btn = document.querySelector(".toggle-btn i");
+            if (document.body.classList.contains("dark")) {
+                btn.classList.replace("fa-moon", "fa-sun");
+            } else {
+                btn.classList.replace("fa-sun", "fa-moon");
+            }
+        }
+
+        // Load preference on page load
+        window.onload = () => {
+            if (localStorage.getItem("darkMode") === "true") {
+                document.body.classList.add("dark");
+            }
+            updateToggleIcon();
+        }
+    </script>
+</body>
+
+</html>
