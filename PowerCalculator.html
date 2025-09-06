@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Calculator (P = IV)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .calculator {
+            background-color: #fff;
+            padding: 25px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 450px;
+        }
+        .input-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 8px;
+        }
+        .input-row label {
+            width: 100px;
+            color: #4a5568;
+            font-size: 15px;
+        }
+        .input-row input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .input-row input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+        }
+        .clear-btn {
+            background-color: #edf2f7;
+            color: #4a5568;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .clear-btn:hover {
+            background-color: #e2e8f0;
+            color: #2d3748;
+        }
+        .action-buttons {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            background-color: #4299e1;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #3182ce;
+        }
+        button.reset {
+            background-color: #e53e3e;
+        }
+        button.reset:hover {
+            background-color: #c53030;
+        }
+        h2 {
+            text-align: center;
+            margin: 0 0 15px 0;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 14px;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+            line-height: 1.5;
+        }
+        .description {
+            margin: 0 0 25px 0;
+            color: #718096;
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .vpeak-converter {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .vpeak-converter h3 {
+            margin: 0 0 15px 0;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .converter-result {
+            margin-top: 10px;
+            padding: 12px;
+            background-color: #f0fff4;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #276749;
+            border: 1px solid #c6f6d5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .copy-btn {
+            background-color: #38a169;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #2f855a;
+        }
+        .copy-btn.copied {
+            background-color: #4299e1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <h2>Power Calculator</h2>
+    <p class="description">Calculate electrical power (P = IV) and related values.<br>Enter any two values to compute the others.</p>
+
+    <div class="input-row">
+        <label for="voltage">Voltage (Vrms):</label>
+        <input type="number" id="voltage" placeholder="Volts" step="any" onkeydown="handleKeyPress(event)">
+        <button class="clear-btn" onclick="clearInput('voltage')">Clear</button>
+    </div>
+
+    <div class="input-row">
+        <label for="current">Current (I):</label>
+        <input type="number" id="current" placeholder="Amps" step="any" onkeydown="handleKeyPress(event)">
+        <button class="clear-btn" onclick="clearInput('current')">Clear</button>
+    </div>
+
+    <div class="input-row">
+        <label for="power">Power (W):</label>
+        <input type="number" id="power" placeholder="Watts" step="any" onkeydown="handleKeyPress(event)">
+        <button class="clear-btn" onclick="clearInput('power')">Clear</button>
+    </div>
+
+    <div class="input-row">
+        <label for="resistance">Impedance (Ω):</label>
+        <input type="number" id="resistance" placeholder="Ohms" step="any" onkeydown="handleKeyPress(event)">
+        <button class="clear-btn" onclick="clearInput('resistance')">Clear</button>
+    </div>
+
+    <div class="vpeak-converter">
+        <h3>Maximum RMS Voltage</h3>
+        <div class="input-row">
+            <label for="V">DC<sub>supply</sub>:</label>
+            <input type="number" id="vpeak" placeholder="DC Voltage" step="any" onkeydown="handleKeyPress(event)">
+            <button class="clear-btn" onclick="clearInput('vpeak')">Clear</button>
+        </div>
+        <button onclick="calculateVrms()">Calculate V<sub>rms</sub></button>
+        <div id="vrms-result" class="converter-result" style="display: none;">
+            <span id="vrms-value"></span>
+            <button class="copy-btn" onclick="copyVrmsToClipboard()">Copy</button>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button onclick="calculate()">Calculate</button>
+        <button class="reset" onclick="resetForm()">Reset All</button>
+    </div>
+    <p id="result"></p>
+</div>
+
+<script>
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            // Check if we're in the Vpeak field
+            if (event.target.id === 'vpeak') {
+                calculateVrms();
+            } else {
+                calculate();
+            }
+        } else if (event.key === 'Delete') {
+            resetForm();
+        }
+    }
+
+    function calculate() {
+        const voltage = parseFloat(document.getElementById("voltage").value);
+        const current = parseFloat(document.getElementById("current").value);
+        const power = parseFloat(document.getElementById("power").value);
+        const resistance = parseFloat(document.getElementById("resistance").value);
+
+        document.getElementById("result").innerText = '';
+
+        if (voltage && current) {
+            const calcPower = voltage * current;
+            const calcResistance = voltage / current;
+            document.getElementById("power").value = calcPower.toFixed(4);
+            document.getElementById("resistance").value = calcResistance.toFixed(4);
+            document.getElementById("result").innerText = `Calculated:\nPower (P) = ${calcPower.toFixed(4)} Watts\nResistance (R) = ${calcResistance.toFixed(4)} Ohms`;
+        }
+        else if (power && current) {
+            const calcVoltage = power / current;
+            const calcResistance = power / (current * current);
+            document.getElementById("voltage").value = calcVoltage.toFixed(4);
+            document.getElementById("resistance").value = calcResistance.toFixed(4);
+            document.getElementById("result").innerText = `Calculated:\nVoltage (V) = ${calcVoltage.toFixed(4)} Volts\nResistance (R) = ${calcResistance.toFixed(4)} Ohms`;
+        }
+        else if (power && voltage) {
+            const calcCurrent = power / voltage;
+            const calcResistance = voltage * voltage / power;
+            document.getElementById("current").value = calcCurrent.toFixed(4);
+            document.getElementById("resistance").value = calcResistance.toFixed(4);
+            document.getElementById("result").innerText = `Calculated:\nCurrent (I) = ${calcCurrent.toFixed(4)} Amps\nResistance (R) = ${calcResistance.toFixed(4)} Ohms`;
+        }
+        else if (voltage && resistance) {
+            const calcCurrent = voltage / resistance;
+            const calcPower = voltage * calcCurrent;
+            document.getElementById("current").value = calcCurrent.toFixed(4);
+            document.getElementById("power").value = calcPower.toFixed(4);
+            document.getElementById("result").innerText = `Calculated:\nCurrent (I) = ${calcCurrent.toFixed(4)} Amps\nPower (P) = ${calcPower.toFixed(4)} Watts`;
+        }
+        else if (current && resistance) {
+            const calcVoltage = current * resistance;
+            const calcPower = current * calcVoltage;
+            document.getElementById("voltage").value = calcVoltage.toFixed(4);
+            document.getElementById("power").value = calcPower.toFixed(4);
+            document.getElementById("result").innerText = `Calculated:\nVoltage (V) = ${calcVoltage.toFixed(4)} Volts\nPower (P) = ${calcPower.toFixed(4)} Watts`;
+        }
+        else if (power && resistance) {
+            const calcCurrent = Math.sqrt(power / resistance);
+            const calcVoltage = calcCurrent * resistance;
+            document.getElementById("current").value = calcCurrent.toFixed(4);
+            document.getElementById("voltage").value = calcVoltage.toFixed(4);
+            document.getElementById("result").innerText = `Calculated:\nCurrent (I) = ${calcCurrent.toFixed(4)} Amps\nVoltage (V) = ${calcVoltage.toFixed(4)} Volts`;
+        }
+        else {
+            document.getElementById("result").innerText = "Please enter any two values to calculate the others.";
+        }
+    }
+
+    function calculateVrms() {
+        const vpeak = parseFloat(document.getElementById("vpeak").value);
+        const vrmsResult = document.getElementById("vrms-result");
+        const vrmsValue = document.getElementById("vrms-value");
+        
+        if (vpeak && !isNaN(vpeak)) {
+            const vrms = vpeak / Math.sqrt(2);
+            vrmsResult.style.display = "flex";
+            vrmsValue.innerHTML = `V<sub>rms</sub> = ${vrms.toFixed(4)} Volts (V<sub>p</sub> / √2)`;
+            vrmsResult.style.backgroundColor = "#f0fff4";
+            vrmsResult.style.borderColor = "#c6f6d5";
+            vrmsResult.style.color = "#276749";
+            // Store the calculated value in a data attribute for copying
+            vrmsResult.setAttribute('data-vrms', vrms.toFixed(4));
+        } else {
+            vrmsResult.style.display = "flex";
+            vrmsValue.innerHTML = "Please enter a valid peak-to-peak voltage";
+            vrmsResult.style.backgroundColor = "#fff5f5";
+            vrmsResult.style.borderColor = "#fed7d7";
+            vrmsResult.style.color = "#9b2c2c";
+        }
+    }
+
+    function copyVrmsToClipboard() {
+        const vrmsResult = document.getElementById("vrms-result");
+        const vrmsValue = vrmsResult.getAttribute('data-vrms');
+        const copyBtn = document.querySelector('#vrms-result .copy-btn');
+        
+        if (vrmsValue) {
+            navigator.clipboard.writeText(vrmsValue)
+                .then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+        }
+    }
+
+    function clearInput(fieldId) {
+        document.getElementById(fieldId).value = '';
+        if (fieldId === 'vpeak') {
+            document.getElementById("vrms-result").style.display = "none";
+        } else {
+            document.getElementById("result").innerText = '';
+        }
+    }
+
+    function resetForm() {
+        document.getElementById("voltage").value = '';
+        document.getElementById("current").value = '';
+        document.getElementById("power").value = '';
+        document.getElementById("resistance").value = '';
+        document.getElementById("vpeak").value = '';
+        document.getElementById("result").innerText = '';
+        document.getElementById("vrms-result").style.display = "none";
+    }
+</script>
+
+</body>
+
+</html>
