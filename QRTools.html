@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional QR Code Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --card-bg: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            width: 100%;
+        }
+        
+        h1 {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--shadow);
+            width: 100%;
+        }
+        
+        .tab-button {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            color: var(--secondary);
+        }
+        
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--secondary);
+            border-radius: 3px 3px 0 0;
+        }
+        
+        .tab-content {
+            display: none;
+            width: 100%;
+        }
+        
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px var(--shadow);
+            overflow: hidden;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .card-header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-body {
+            padding: 30px;
+        }
+        
+        .scanner-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            width: 100%;
+            align-items: center;
+        }
+        
+        @media (min-width: 992px) {
+            .scanner-container {
+                flex-direction: row;
+                justify-content: center;
+            }
+            
+            .card {
+                width: 48%;
+            }
+        }
+        
+        #video-container {
+            width: 100%;
+            position: relative;
+            background-color: black;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #video {
+            width: 100%;
+            display: block;
+            background: #000;
+            border-radius: 8px;
+        }
+        
+        #scan-region {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3);
+        }
+        
+        #scan-line {
+            position: absolute;
+            height: 2px;
+            width: 100%;
+            background: var(--secondary);
+            top: 0;
+            animation: scan 2s infinite linear;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: calc(100% - 2px); }
+            100% { top: 0; }
+        }
+        
+        .scanner-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: var(--secondary);
+            color: white;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+            box-shadow: 0 4px 6px rgba(149, 165, 166, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+        
+        .result-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .result-placeholder {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #bdc3c7;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .result-placeholder i {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        #result {
+            display: none;
+            flex: 1;
+        }
+        
+        .result-success {
+            color: var(--success);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.2rem;
+        }
+        
+        .result-data {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            word-break: break-all;
+            border-left: 4px solid var(--secondary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        
+        .result-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn-small {
+            padding: 12px 20px;
+            font-size: 0.95rem;
+        }
+        
+        .generator-form {
+            margin-bottom: 25px;
+            width: 100%;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        textarea, input[type="text"], input[type="url"] {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.3s ease;
+        }
+        
+        textarea:focus, input[type="text"]:focus, input[type="url"]:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .qr-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 30px;
+            width: 100%;
+        }
+        
+        #qrcode {
+            width: 200px;
+            height: 200px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .download-btn {
+            margin-top: 20px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            display: none;
+            border-radius: 8px;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: var(--accent);
+            text-align: center;
+            padding: 15px;
+            background: #ffebee;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            padding: 20px 0;
+            width: 100%;
+        }
+        
+        .icon {
+            font-size: 1.5rem;
+        }
+        
+        .generator-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        @media (min-width: 992px) {
+            .generator-container {
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>QR Code Professional</h1>
+            <p class="subtitle">Scan and generate QR codes with ease</p>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab-button active" data-tab="scanner">
+                <span class="icon">📷</span> Scanner
+            </button>
+            <button class="tab-button" data-tab="generator">
+                <span class="icon">⚙️</span> Generator
+            </button>
+        </div>
+        
+        <div class="tab-content active" id="scanner-tab">
+            <div class="scanner-container">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="icon">📷</span>
+                        <span>QR Code Scanner</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                        <div id="video-container">
+                            <video id="video" playsinline></video>
+                            <div id="scan-region">
+                                <div id="scan-line"></div>
+                            </div>
+                        </div>
+                        <div class="error-message" id="error-message"></div>
+                        <div class="scanner-controls">
+                            <button id="start-button" class="btn-primary">
+                                <span class="icon">▶</span> Start Scanner
+                            </button>
+                            <button id="stop-button" class="btn-secondary" disabled>
+                                <span class="icon">⏹</span> Stop Scanner
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span class="icon">📋</span>
+                        <span>Scan Results</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="result-content">
+                            <div class="result-placeholder" id="result-placeholder">
+                                <span class="icon">🔍</span>
+                                <h3>No QR code scanned yet</h3>
+                                <p>Start the scanner and point your camera at a QR code</p>
+                            </div>
+                            
+                            <div id="result">
+                                <div class="result-success">
+                                    <span class="icon">✅</span>
+                                    <h3>QR Code Scanned Successfully!</h3>
+                                </div>
+                                <p>Content:</p>
+                                <div class="result-data" id="result-data"></div>
+                                <div class="result-actions">
+                                    <button id="copy-button" class="btn-success btn-small">
+                                        <span class="icon">📋</span> Copy to Clipboard
+                                    </button>
+                                    <button id="open-button" class="btn-primary btn-small">
+                                        <span class="icon">🌐</span> Open URL
+                                    </button>
+                                    <button id="clear-result-button" class="btn-secondary btn-small">
+                                        <span class="icon">🗑️</span> Clear Result
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="generator-tab">
+            <div class="generator-container">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="icon">⚙️</span>
+                        <span>QR Code Generator</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="generator-form">
+                            <div class="form-group">
+                                <label for="qr-content">Enter text or URL to generate QR code:</label>
+                                <textarea id="qr-content" placeholder="Enter text or URL here...">https://example.com</textarea>
+                            </div>
+                            <button id="generate-button" class="btn-primary">
+                                <span class="icon">🔄</span> Generate QR Code
+                            </button>
+                        </div>
+                        
+                        <div class="qr-preview">
+                            <div id="qrcode"></div>
+                            <button id="download-button" class="btn-success download-btn" disabled>
+                                <span class="icon">📥</span> Download QR Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span class="icon">💡</span>
+                        <span>Generator Tips</span>
+                    </div>
+                    <div class="card-body">
+                        <h3>Best practices for QR codes:</h3>
+                        <ul style="padding-left: 20px; margin-top: 15px;">
+                            <li>Use high contrast colors for better scanning</li>
+                            <li>Test your QR code with multiple devices</li>
+                            <li>For URLs, use HTTPS for security</li>
+                            <li>Keep the content concise for simpler codes</li>
+                            <li>Add a call-to-action near the QR code</li>
+                        </ul>
+                        
+                        <div style="margin-top: 30px;">
+                            <h3>Common uses for QR codes:</h3>
+                            <ul style="padding-left: 20px; margin-top: 15px;">
+                                <li>Website URLs</li>
+                                <li>Contact information (vCards)</li>
+                                <li>Wi-Fi network credentials</li>
+                                <li>Payment information</li>
+                                <li>Event details</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Professional QR Code Tool &copy; 2023 | All rights reserved</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab functionality
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.getAttribute('data-tab');
+                    
+                    // Update active tab button
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // Show active tab content
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                    
+                    // If switching to scanner tab and scanner was active, restart it
+                    if (tabId === 'scanner' && window.scannerActive) {
+                        setTimeout(() => {
+                            startScanner();
+                        }, 300);
+                    } else if (tabId !== 'scanner') {
+                        // If switching away from scanner, stop it
+                        stopScanner();
+                    }
+                });
+            });
+            
+            // Scanner functionality
+            const video = document.getElementById('video');
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const copyButton = document.getElementById('copy-button');
+            const openButton = document.getElementById('open-button');
+            const clearResultButton = document.getElementById('clear-result-button');
+            const resultPlaceholder = document.getElementById('result-placeholder');
+            const resultDiv = document.getElementById('result');
+            const resultData = document.getElementById('result-data');
+            const errorMessage = document.getElementById('error-message');
+            const loading = document.querySelector('.loading');
+            
+            // Generator functionality
+            const qrContent = document.getElementById('qr-content');
+            const generateButton = document.getElementById('generate-button');
+            const downloadButton = document.getElementById('download-button');
+            const qrcodeDiv = document.getElementById('qrcode');
+            
+            // Variables
+            let stream = null;
+            let scanning = false;
+            let lastResult = '';
+            let qrCode = null;
+            
+            // Check for camera support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError("Your browser doesn't support camera access. Please try a modern browser.");
+                startButton.disabled = true;
+            }
+            
+            // Start scanner
+            startButton.addEventListener('click', function() {
+                startScanner();
+            });
+            
+            // Stop scanner
+            stopButton.addEventListener('click', function() {
+                stopScanner();
+            });
+            
+            // Copy to clipboard
+            copyButton.addEventListener('click', function() {
+                navigator.clipboard.writeText(lastResult).then(function() {
+                    alert("Copied to clipboard!");
+                }).catch(function() {
+                    alert("Failed to copy to clipboard.");
+                });
+            });
+            
+            // Open URL
+            openButton.addEventListener('click', function() {
+                try {
+                    // Check if it's a valid URL
+                    new URL(lastResult);
+                    window.open(lastResult, '_blank');
+                } catch (e) {
+                    alert("The scanned content is not a valid URL.");
+                }
+            });
+            
+            // Clear result
+            clearResultButton.addEventListener('click', function() {
+                resultDiv.style.display = 'none';
+                resultPlaceholder.style.display = 'flex';
+            });
+            
+            // Generate QR code
+            generateButton.addEventListener('click', function() {
+                generateQRCode();
+            });
+            
+            // Download QR code
+            downloadButton.addEventListener('click', function() {
+                if (qrCode) {
+                    const link = document.createElement('a');
+                    link.download = 'qrcode.png';
+                    link.href = qrCode;
+                    link.click();
+                }
+            });
+            
+            function startScanner() {
+                loading.style.display = 'flex';
+                errorMessage.style.display = 'none';
+                
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: "environment" 
+                    } 
+                }).then(function(s) {
+                    stream = s;
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', true);
+                    
+                    video.onloadedmetadata = function() {
+                        video.play();
+                        loading.style.display = 'none';
+                        scanning = true;
+                        window.scannerActive = true;
+                        startButton.disabled = true;
+                        stopButton.disabled = false;
+                        scanQRCode();
+                    };
+                }).catch(function(error) {
+                    loading.style.display = 'none';
+                    showError("Could not access the camera: " + error.message);
+                });
+            }
+            
+            function stopScanner() {
+                scanning = false;
+                window.scannerActive = false;
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+            }
+            
+            function scanQRCode() {
+                if (!scanning) return;
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                // Set canvas dimensions to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw video frame to canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Get image data from canvas
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Try to decode QR code
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    // Found a QR code
+                    if (code.data !== lastResult) {
+                        lastResult = code.data;
+                        displayResult(code.data);
+                    }
+                }
+                
+                // Continue scanning
+                requestAnimationFrame(scanQRCode);
+            }
+            
+            function displayResult(data) {
+                resultPlaceholder.style.display = 'none';
+                resultDiv.style.display = 'flex';
+                resultData.textContent = data;
+                
+                // Show/hide open button based on whether it's a URL
+                try {
+                    new URL(data);
+                    openButton.style.display = 'flex';
+                } catch (e) {
+                    openButton.style.display = 'none';
+                }
+            }
+            
+            function generateQRCode() {
+                const text = qrContent.value.trim();
+                if (!text) {
+                    alert("Please enter some text or a URL to generate a QR code");
+                    return;
+                }
+                
+                // Clear previous QR code
+                qrcodeDiv.innerHTML = '';
+                
+                // Generate new QR code
+                QRCode.toDataURL(text, {
+                    width: 200,
+                    height: 200,
+                    margin: 1,
+                    color: {
+                        dark: '#2c3e50',
+                        light: '#ffffff'
+                    }
+                }, function(err, url) {
+                    if (err) {
+                        console.error(err);
+                        alert("Failed to generate QR code");
+                        return;
+                    }
+                    
+                    // Display QR code
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = "QR Code";
+                    qrcodeDiv.appendChild(img);
+                    
+                    // Enable download button
+                    qrCode = url;
+                    downloadButton.disabled = false;
+                });
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+            
+            // Generate initial QR code
+            generateQRCode();
+        });
+    </script>
+</body>
+</html>
