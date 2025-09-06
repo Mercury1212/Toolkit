@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure File Locker</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --accent: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --error: #e74c3c;
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #495057;
+            --border-color: #dee2e6;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-mode {
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --text-primary: #e6e6e6;
+            --text-secondary: #b3b3b3;
+            --border-color: #2d2d2d;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --secondary: #34495e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--bg-secondary);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            transition: color 0.3s;
+        }
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            transition: color 0.3s;
+        }
+        .theme-switch {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        .theme-switch-text {
+            margin-right: 10px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .theme-switch {
+            display: inline-block;
+            height: 34px;
+            position: relative;
+            width: 60px;
+        }
+        .theme-switch input {
+            display: none;
+        }
+        .slider {
+            background-color: #ccc;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            background-color: white;
+            bottom: 4px;
+            content: "";
+            height: 26px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 26px;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .upload-area {
+            border: 3px dashed var(--primary);
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: rgba(52, 152, 219, 0.05);
+            position: relative;
+        }
+        .upload-area:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: var(--secondary);
+        }
+        .upload-area.dragover {
+            background-color: rgba(52, 152, 219, 0.2);
+            border-color: var(--secondary);
+            transform: scale(1.02);
+        }
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            transition: color 0.3s;
+        }
+        .file-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: var(--bg-primary);
+            border-radius: 8px;
+            display: none;
+            transition: background-color 0.3s;
+        }
+        .password-section {
+            margin: 20px 0;
+            position: relative;
+        }
+        input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            padding-right: 50px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        input[type="password"]:focus, input[type="text"]:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        /* PROFESSIONAL ICON BUTTON STYLES */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: var(--primary);
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+        .password-toggle svg {
+            width: 24px;
+            height: 24px;
+            display: block;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow-color);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-encrypt {
+            background-color: var(--primary);
+        }
+        .btn-decrypt {
+            background-color: var(--success);
+        }
+        .btn-clear {
+            background-color: var(--warning);
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            text-align: center;
+        }
+        .status.success {
+            background-color: rgba(46, 204, 113, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+            display: block;
+        }
+        .status.error {
+            background-color: rgba(231, 76, 60, 0.2);
+            border: 2px solid var(--error);
+            color: var(--error);
+            display: block;
+        }
+        .progress {
+            height: 12px;
+            background-color: var(--border-color);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+        .security-info {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            border-radius: 10px;
+            border-left: 5px solid var(--primary);
+            transition: background-color 0.3s;
+        }
+        .security-info h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .security-info p {
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        .file-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        @media (min-width: 768px) {
+            .actions {
+                flex-direction: row;
+            }
+            .btn {
+                width: auto;
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <div class="container">
+        <header>
+            <h1>Secure File Locker</h1>
+            <p class="subtitle">Encrypt and decrypt files with Argon2id & AES-GCM</p>
+            <div class="theme-switch-wrapper">
+                <span class="theme-switch-text">Dark Mode</span>
+                <label class="theme-switch">
+                    <input type="checkbox" id="theme-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </header>
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p>Drag & drop your file here or</p>
+            <input type="file" id="fileInput" style="display: none;">
+            <label for="fileInput" class="btn">Choose File</label>
+        </div>
+        <div class="file-info" id="fileInfo">
+            <h3>Selected File:</h3>
+            <div class="file-details">
+                <span id="fileName"></span>
+                <span id="fileSize"></span>
+            </div>
+        </div>
+        <div class="password-section">
+            <input type="password" id="password" placeholder="Enter encryption password (min 8 chars)" autocomplete="off">
+            <button type="button" id="togglePassword" class="password-toggle" aria-label="Toggle password visibility">
+                <!-- Start hidden password SVG (eye closed) -->
+                <svg id="eyeClosedIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 3l18 18M10.73 10.73A3 3 0 0012 15a3 3 0 003-3c0-1.27-.77-2.36-1.87-2.82M17.94 17.94C15.82 19.33 13.15 20 12 20c-5.52 0-10-7-10-8 0-.79 1.55-3.9 6.06-6.94M9.1 5.1C10.44 4.4 11.74 4 12 4c5.52 0 10 7 10 8 0 .47-1.11 2.84-4.06 5.94" />
+                </svg>
+                <!-- End hidden password SVG -->
+            </button>
+        </div>
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-encrypt" id="encryptBtn" disabled>Encrypt File</button>
+            <button class="btn btn-decrypt" id="decryptBtn" disabled>Decrypt File</button>
+            <button class="btn btn-clear" id="clearBtn">Clear All</button>
+        </div>
+        <div class="status" id="status"></div>
+        <div class="security-info">
+            <h3>Security Information</h3>
+            <p>This tool uses Argon2id for key derivation and AES-GCM (256-bit) for encryption.
+            All file metadata is encrypted; nothing is visible in plaintext in the output.</p>
+            <p>Encrypted files are saved with a .zip extension for compatibility.</p>
+            <p>Remember your password – there is no recovery if it is lost.</p>
+        </div>
+    </div>
+    <!-- Load argon2-browser for Argon2id KDF -->
+    <script src="argon2-bundled.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const passwordInput = document.getElementById('password');
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const encryptBtn = document.getElementById('encryptBtn');
+            const decryptBtn = document.getElementById('decryptBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const status = document.getElementById('status');
+            const progress = document.getElementById('progress');
+            const progressBar = document.getElementById('progressBar');
+            const themeToggle = document.getElementById('theme-toggle');
+            let selectedFile = null;
+            let passwordVisible = false;
+
+            // SVGs for eye open and eye closed
+            const eyeOpenSVG = `
+                <svg id="eyeOpenIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+            `;
+            const eyeClosedSVG = `
+                <svg id="eyeClosedIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 3l18 18M10.73 10.73A3 3 0 0012 15a3 3 0 003-3c0-1.27-.77-2.36-1.87-2.82M17.94 17.94C15.82 19.33 13.15 20 12 20c-5.52 0-10-7-10-8 0-.79 1.55-3.9 6.06-6.94M9.1 5.1C10.44 4.4 11.74 4 12 4c5.52 0 10 7 10 8 0 .47-1.11 2.84-4.06 5.94" />
+                </svg>
+            `;
+
+            // Theme toggle functionality
+            themeToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                }
+            });
+
+            // Password visibility toggle (SVG swap, not emoji)
+            togglePasswordBtn.addEventListener('click', function() {
+                passwordVisible = !passwordVisible;
+                if (passwordVisible) {
+                    passwordInput.type = 'text';
+                    togglePasswordBtn.innerHTML = eyeOpenSVG;
+                } else {
+                    passwordInput.type = 'password';
+                    togglePasswordBtn.innerHTML = eyeClosedSVG;
+                }
+            });
+
+            // Set default icon
+            togglePasswordBtn.innerHTML = eyeClosedSVG;
+
+            // Event listeners for file upload
+            uploadArea.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'LABEL' && e.target.tagName !== 'INPUT') {
+                    fileInput.click();
+                }
+            });
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    handleFileSelection(e.dataTransfer.files[0]);
+                }
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    handleFileSelection(e.target.files[0]);
+                }
+            });
+            passwordInput.addEventListener('input', toggleButtonState);
+            encryptBtn.addEventListener('click', encryptFile);
+            decryptBtn.addEventListener('click', decryptFile);
+            clearBtn.addEventListener('click', resetUI);
+
+            function handleFileSelection(file) {
+                selectedFile = file;
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = 'block';
+                toggleButtonState();
+            }
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+                else if (bytes < 1024 * 1024 * 1024) return (bytes / 1048576).toFixed(2) + ' MB';
+                return (bytes / (1024 ** 3)).toFixed(2) + ' GB';
+            }
+            function toggleButtonState() {
+                const hasFile = selectedFile !== null;
+                const hasPassword = passwordInput.value.length >= 8;
+                encryptBtn.disabled = !(hasFile && hasPassword);
+                // Enable decrypt button only if file has .zip extension
+                if (hasFile && hasPassword && selectedFile.name.toLowerCase().endsWith('.zip')) {
+                    decryptBtn.disabled = false;
+                } else {
+                    decryptBtn.disabled = true;
+                }
+            }
+            function updateProgress(percent) {
+                progress.style.display = 'block';
+                progressBar.style.width = percent + '%';
+            }
+            function showStatus(message, isError = false) {
+                status.textContent = message;
+                status.className = isError ? 'status error' : 'status success';
+                status.style.display = 'block';
+            }
+            function hideStatus() {
+                status.style.display = 'none';
+            }
+            function resetUI() {
+                selectedFile = null;
+                fileInput.value = '';
+                passwordInput.value = '';
+                passwordInput.type = 'password';
+                passwordVisible = false;
+                togglePasswordBtn.innerHTML = eyeClosedSVG;
+                fileInfo.style.display = 'none';
+                progress.style.display = 'none';
+                hideStatus();
+                toggleButtonState();
+            }
+
+            // Locker v3 format constants
+            const SALT_LEN = 16;
+            const IV_LEN = 12;
+            const MIN_PASSWORD_LEN = 8;
+
+            async function deriveKey(password, salt) {
+                // Use Argon2id for key derivation (sync with Python config)
+                const result = await argon2.hash({
+                    pass: password,
+                    salt: salt,
+                    type: argon2.ArgonType.Argon2id,
+                    time: 3,
+                    mem: 262144,
+                    hashLen: 32,
+                    parallelism: 1
+                });
+                return result.hash;
+            }
+
+            function clampU16(n) {
+                n = Number(n);
+                return Math.max(0, Math.min(65535, n));
+            }
+
+            async function encryptFile() {
+                if (!selectedFile || passwordInput.value.length < MIN_PASSWORD_LEN) return;
+                try {
+                    updateProgress(10);
+                    showStatus('Encrypting file...');
+                    // Generate salt
+                    const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+                    // Derive key
+                    const keyMaterial = await deriveKey(passwordInput.value, salt);
+                    updateProgress(20);
+                    const key = await crypto.subtle.importKey(
+                        'raw',
+                        keyMaterial,
+                        { name: 'AES-GCM' },
+                        false,
+                        ['encrypt']
+                    );
+                    // Generate file IV
+                    const fileIv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+                    const aesgcm = key;
+                    // Get file extension
+                    const baseName = selectedFile.name;
+                    const dotIdx = baseName.lastIndexOf('.');
+                    let originalExt = dotIdx !== -1 ? baseName.slice(dotIdx) : '';
+                    let nameWithoutExt = dotIdx !== -1 ? baseName.slice(0, dotIdx) : baseName;
+                    updateProgress(25);
+                    // Encrypt extension
+                    const extBytes = new TextEncoder().encode(originalExt);
+                    const extIv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+                    const encryptedExt = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: extIv }, key, extBytes);
+                    let encryptedExtWithIv = new Uint8Array(IV_LEN + encryptedExt.byteLength);
+                    encryptedExtWithIv.set(extIv, 0);
+                    encryptedExtWithIv.set(new Uint8Array(encryptedExt), IV_LEN);
+                    let extLen = encryptedExtWithIv.length;
+                    if (extLen > 255) {
+                        encryptedExtWithIv = encryptedExtWithIv.slice(0, 255);
+                        extLen = 255;
+                    }
+                    // Encrypt filename
+                    const nameBytes = new TextEncoder().encode(nameWithoutExt);
+                    const nameIv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+                    const encryptedName = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nameIv }, key, nameBytes);
+                    let encryptedNameWithIv = new Uint8Array(IV_LEN + encryptedName.byteLength);
+                    encryptedNameWithIv.set(nameIv, 0);
+                    encryptedNameWithIv.set(new Uint8Array(encryptedName), IV_LEN);
+                    let nameLen = clampU16(encryptedNameWithIv.length);
+                    if (encryptedNameWithIv.length != nameLen) {
+                        encryptedNameWithIv = encryptedNameWithIv.slice(0, nameLen);
+                    }
+                    // Encrypt MIME type
+                    let mimeType = selectedFile.type || 'application/octet-stream';
+                    const mimeBytes = new TextEncoder().encode(mimeType);
+                    const mimeIv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+                    const encryptedMime = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: mimeIv }, key, mimeBytes);
+                    let encryptedMimeWithIv = new Uint8Array(IV_LEN + encryptedMime.byteLength);
+                    encryptedMimeWithIv.set(mimeIv, 0);
+                    encryptedMimeWithIv.set(new Uint8Array(encryptedMime), IV_LEN);
+                    let mimeLen = encryptedMimeWithIv.length;
+                    if (mimeLen > 255) {
+                        encryptedMimeWithIv = encryptedMimeWithIv.slice(0, 255);
+                        mimeLen = 255;
+                    }
+                    updateProgress(35);
+                    // Build header: salt + iv + [ext_len][encrypted_ext_with_iv] + [name_len_be2][encrypted_name_with_iv] + [mime_len][encrypted_mime_with_iv]
+                    let headerLen = SALT_LEN + IV_LEN + 1 + extLen + 2 + nameLen + 1 + mimeLen;
+                    let header = new Uint8Array(headerLen);
+                    let off = 0;
+                    header.set(salt, off); off += SALT_LEN;
+                    header.set(fileIv, off); off += IV_LEN;
+                    header[off] = extLen; off++;
+                    header.set(encryptedExtWithIv, off); off += extLen;
+                    header[off] = (nameLen >> 8) & 0xff; off++;
+                    header[off] = nameLen & 0xff; off++;
+                    header.set(encryptedNameWithIv, off); off += nameLen;
+                    header[off] = mimeLen; off++;
+                    header.set(encryptedMimeWithIv, off); off += mimeLen;
+                    updateProgress(40);
+                    // Read file content
+                    const fileBuffer = await readFileAsArrayBuffer(selectedFile);
+                    updateProgress(60);
+                    // Encrypt file content in one chunk (browser limitation)
+                    const encryptedData = await crypto.subtle.encrypt(
+                        { name: 'AES-GCM', iv: fileIv },
+                        key,
+                        fileBuffer
+                    );
+                    updateProgress(80);
+                    // Output file: header + ciphertext
+                    let outArr = new Uint8Array(header.length + encryptedData.byteLength);
+                    outArr.set(header, 0);
+                    outArr.set(new Uint8Array(encryptedData), header.length);
+                    // Save as .zip
+                    const baseNameNoExt = nameWithoutExt;
+                    const outFileName = baseNameNoExt + '.zip';
+                    downloadFile(new Blob([outArr], { type: 'application/zip' }), outFileName);
+                    updateProgress(100);
+                    showStatus('File encrypted successfully! Saved as ' + outFileName);
+                    setTimeout(() => { progress.style.display = 'none'; }, 2000);
+                } catch (error) {
+                    console.error('Encryption error:', error);
+                    showStatus('Error: ' + error.message, true);
+                }
+            }
+
+            async function decryptFile() {
+                if (!selectedFile || passwordInput.value.length < MIN_PASSWORD_LEN) return;
+                try {
+                    updateProgress(10);
+                    showStatus('Decrypting file...');
+                    // Read file
+                    const fileBuffer = await readFileAsArrayBuffer(selectedFile);
+                    const blob = new Uint8Array(fileBuffer);
+                    let off = 0;
+                    if (blob.length < SALT_LEN + IV_LEN + 1) throw new Error('File too short');
+                    const salt = blob.slice(off, off + SALT_LEN); off += SALT_LEN;
+                    const fileIv = blob.slice(off, off + IV_LEN); off += IV_LEN;
+                    // Parse header
+                    const extLen = blob[off]; off++;
+                    const encryptedExt = blob.slice(off, off + extLen); off += extLen;
+                    const nameLen = (blob[off] << 8) | blob[off + 1]; off += 2;
+                    const encryptedName = blob.slice(off, off + nameLen); off += nameLen;
+                    const mimeLen = blob[off]; off++;
+                    const encryptedMime = blob.slice(off, off + mimeLen); off += mimeLen;
+                    const ctOffset = off;
+                    updateProgress(20);
+                    // Derive key
+                    const keyMaterial = await deriveKey(passwordInput.value, salt);
+                    const key = await crypto.subtle.importKey(
+                        'raw',
+                        keyMaterial,
+                        { name: 'AES-GCM' },
+                        false,
+                        ['decrypt']
+                    );
+                    updateProgress(40);
+                    // Decrypt extension
+                    let ext = '';
+                    if (encryptedExt.length >= IV_LEN) {
+                        const extIv = encryptedExt.slice(0, IV_LEN);
+                        const extData = encryptedExt.slice(IV_LEN);
+                        try {
+                            const decExt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: extIv }, key, extData);
+                            ext = new TextDecoder().decode(decExt);
+                        } catch { ext = ''; }
+                    }
+                    // Decrypt filename
+                    let nameOpt = null;
+                    if (encryptedName.length >= IV_LEN) {
+                        const nameIv = encryptedName.slice(0, IV_LEN);
+                        const nameData = encryptedName.slice(IV_LEN);
+                        try {
+                            const decName = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nameIv }, key, nameData);
+                            nameOpt = new TextDecoder().decode(decName);
+                        } catch { nameOpt = 'decrypted_file'; }
+                    }
+                    // Decrypt mime
+                    let mimeOpt = null;
+                    if (encryptedMime.length >= IV_LEN) {
+                        const mimeIv = encryptedMime.slice(0, IV_LEN);
+                        const mimeData = encryptedMime.slice(IV_LEN);
+                        try {
+                            const decMime = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: mimeIv }, key, mimeData);
+                            mimeOpt = new TextDecoder().decode(decMime);
+                        } catch { mimeOpt = null; }
+                    }
+                    updateProgress(60);
+                    // Decrypt file data
+                    const encryptedData = blob.slice(ctOffset);
+                    let decryptedData;
+                    try {
+                        decryptedData = await crypto.subtle.decrypt(
+                            { name: 'AES-GCM', iv: fileIv },
+                            key,
+                            encryptedData
+                        );
+                    } catch (err) {
+                        throw new Error('Decryption failed. Wrong password or corrupted file.');
+                    }
+                    updateProgress(90);
+                    // Save as original file
+                    let outFileName = nameOpt ? (nameOpt + (ext || '')) : 'decrypted_file' + (ext || '');
+                    let outMimeType = mimeOpt || 'application/octet-stream';
+                    downloadFile(new Blob([decryptedData], { type: outMimeType }), outFileName);
+                    updateProgress(100);
+                    showStatus('File decrypted successfully! Saved as ' + outFileName);
+                    setTimeout(() => { progress.style.display = 'none'; }, 2000);
+                } catch (error) {
+                    console.error('Decryption error:', error);
+                    showStatus('Error: ' + error.message, true);
+                }
+            }
+
+            function readFileAsArrayBuffer(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+            function downloadFile(blob, fileName) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }
+        });
+    </script>
+</body>
+</html>

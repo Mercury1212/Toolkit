@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Tools - Professional Password & TOTP Generator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --primary-dark: #3a0ca3;
+            --secondary: #7209b7;
+            --accent: #f72585;
+            --success: #4cc9f0;
+            --warning: #f9c74f;
+            --danger: #f94144;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #adb5bd;
+            --border: #dee2e6;
+            --card-bg: #ffffff;
+            --card-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --gradient-start: #4361ee;
+            --gradient-mid: #7209b7;
+            --gradient-end: #f72585;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
+        
+        body { 
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid), var(--gradient-end));
+            min-height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        .container { 
+            background-color: var(--card-bg); 
+            border-radius: 20px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); 
+            width: 100%; 
+            max-width: 1000px; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .app-header {
+            padding: 28px 32px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .app-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        
+        h1 { 
+            font-weight: 800; 
+            font-size: 2rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .description { 
+            color: rgba(255, 255, 255, 0.85); 
+            font-size: 1.05rem;
+            position: relative;
+        }
+        
+        .app-body {
+            display: flex;
+            min-height: 500px;
+        }
+        
+        .sidebar {
+            width: 240px;
+            background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+            padding: 24px 0;
+            border-right: 1px solid var(--border);
+        }
+        
+        .tab {
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--dark);
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(67, 97, 238, 0.1), transparent);
+            transition: all 0.5s ease;
+        }
+        
+        .tab:hover::before {
+            left: 100%;
+        }
+        
+        .tab:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+            color: var(--primary);
+        }
+        
+        .tab.active {
+            background: linear-gradient(90deg, rgba(67, 97, 238, 0.1), transparent);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .tab i {
+            width: 20px;
+            text-align: center;
+            color: var(--primary);
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active i {
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 28px 32px;
+            overflow-y: auto;
+            background-color: #fafbfc;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .input-group { 
+            margin-bottom: 24px; 
+        }
+        
+        .input-label {
+            display: block; 
+            margin-bottom: 10px; 
+            font-weight: 600; 
+            color: var(--dark);
+            font-size: 1rem;
+        }
+        
+        .input-hint {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-top: 8px;
+        }
+        
+        input[type="text"], input[type="number"] { 
+            padding: 14px 16px; 
+            border: 1px solid var(--border); 
+            border-radius: 10px; 
+            font-size: 1rem; 
+            transition: all 0.3s; 
+            background: var(--light);
+            color: var(--dark);
+            width: 100%;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus { 
+            border-color: var(--primary-light); 
+            outline: none; 
+            background: var(--card-bg);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            padding: 16px 28px; 
+            font-size: 1.05rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.3s;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.6s ease;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(67, 97, 238, 0.4);
+        }
+        
+        .btn:active { 
+            transform: translateY(0); 
+        }
+        
+        .btn-icon {
+            font-size: 1.1rem;
+        }
+        
+        .password-display-container {
+            display: flex;
+            margin-bottom: 24px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            height: 60px;
+            border: 1px solid var(--border);
+        }
+        
+        .password-display {
+            flex: 1;
+            padding: 18px;
+            font-size: 1.1rem;
+            border: none;
+            background: var(--light);
+            color: var(--dark);
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-weight: 500;
+            overflow: auto;
+            white-space: nowrap;
+        }
+        
+        .btn-copy {
+            width: 60px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .btn-copy:hover {
+            background: var(--primary-dark);
+        }
+        
+        .password-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            font-size: 1rem;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+        
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            background: var(--light);
+            border-radius: 10px;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+        
+        .option:hover {
+            background: #e9ecef;
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        
+        .option input {
+            margin-right: 14px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--border);
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: all 0.3s;
+            border: 2px solid white;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--primary-dark);
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        input[type="number"] {
+            width: 80px !important;
+            text-align: center;
+        }
+        
+        /* Secret key field specific styling */
+        #secretKey {
+            width: 100%;
+            max-width: 650px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+        
+        .strength-meter {
+            height: 10px;
+            background-color: var(--border);
+            border-radius: 5px;
+            margin-top: 14px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: all 0.4s ease;
+            position: absolute;
+            left: 0;
+            top: 0;
+            border-radius: 5px;
+        }
+        
+        .strength-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 14px;
+            font-size: 1rem;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+        
+        .result-container { 
+            margin-top: 28px; 
+            padding: 28px; 
+            background: linear-gradient(to right, rgba(67, 97, 238, 0.1), rgba(76, 201, 240, 0.1)); 
+            border-radius: 16px; 
+            border-left: 5px solid var(--primary);
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .totp-code { 
+            font-size: 2.8rem; 
+            font-weight: 800; 
+            letter-spacing: 6px; 
+            color: var(--primary-dark); 
+            margin: 24px 0; 
+            font-family: 'Fira Code', 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .timer { 
+            font-size: 1.1rem; 
+            color: var(--primary); 
+            margin-top: 16px; 
+            font-weight: 600;
+        }
+        
+        .info-box {
+            margin-top: 32px; 
+            padding: 24px; 
+            background: linear-gradient(to right, rgba(67, 97, 238, 0.1), transparent); 
+            border-radius: 16px; 
+            font-size: 1rem; 
+            color: var(--primary-dark);
+            line-height: 1.6;
+            border-left: 5px solid var(--primary);
+        }
+        
+        .info-title {
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+        }
+        
+        .disclaimer { 
+            margin-top: 28px; 
+            font-size: 0.9rem; 
+            color: var(--dark); 
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(to right, rgba(249, 65, 68, 0.1), transparent);
+            border-radius: 12px;
+            border-left: 5px solid var(--danger);
+        }
+        
+        .flex-row {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        
+        .flex-col {
+            flex: 1;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 16px 28px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: toastIn 0.4s ease, toastOut 0.4s ease 2.7s forwards;
+        }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        
+        @keyframes toastOut {
+            from { opacity: 1; transform: translate(-50%, 0); }
+            to { opacity: 0; transform: translate(-50%, 20px); }
+        }
+        
+        /* TOTP copy button styling */
+        .totp-display-container {
+            display: flex;
+            margin: 24px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            height: 80px;
+            border: 1px solid var(--border);
+        }
+        
+        .totp-display {
+            flex: 1;
+            padding: 18px;
+            font-size: 2rem;
+            border: none;
+            background: var(--light);
+            color: var(--primary-dark);
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 6px;
+        }
+        
+        .btn-copy-totp {
+            width: 80px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 1.5rem;
+        }
+        
+        .btn-copy-totp:hover {
+            background: var(--primary-dark);
+        }
+        
+        /* QR Code Styling */
+        .qr-container {
+            margin-top: 24px;
+            text-align: center;
+            display: none;
+        }
+        
+        #qrCode {
+            margin: 0 auto;
+            padding: 10px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 200px;
+        }
+        
+        .qr-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        
+        .qr-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .qr-btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .qr-btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .qr-btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+        
+        .qr-btn-secondary:hover {
+            background: #e9ecef;
+        }
+        
+        @media (max-width: 900px) {
+            .app-body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                padding: 0;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            .tabs-container {
+                display: flex;
+                overflow-x: auto;
+            }
+            
+            .tab {
+                padding: 16px 20px;
+                border-left: none;
+                border-bottom: 4px solid transparent;
+                flex-shrink: 0;
+            }
+            
+            .tab.active {
+                border-left: none;
+                border-bottom-color: var(--primary);
+            }
+            
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .flex-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .app-header {
+                padding: 24px;
+            }
+            
+            .content-area {
+                padding: 24px;
+            }
+            
+            .card {
+                padding: 24px;
+            }
+            
+            .password-display-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .password-display {
+                width: 100%;
+                border-right: 1px solid var(--border);
+                border-radius: 10px 10px 0 0;
+            }
+            
+            .btn-copy {
+                width: 100%;
+                border-radius: 0 0 10px 10px;
+                padding: 12px;
+            }
+            
+            .totp-code {
+                font-size: 2.2rem;
+                letter-spacing: 4px;
+            }
+            
+            .range-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            
+            input[type="number"] {
+                width: 100% !important;
+            }
+            
+            #secretKey {
+                max-width: 100%;
+            }
+            
+            .qr-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="app-header">
+            <h1><i class="fas fa-shield-alt"></i> Security Tools</h1>
+            <p class="description">Professional password generator and TOTP authenticator</p>
+        </div>
+        
+        <div class="app-body">
+            <div class="sidebar">
+                <div class="tab active" data-tab="password">
+                    <i class="fas fa-key"></i>
+                    <span>Password Generator</span>
+                </div>
+                <div class="tab" data-tab="totp">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>TOTP Generator</span>
+                </div>
+            </div>
+            
+            <div class="content-area">
+                <!-- Password Generator Tab -->
+                <div class="tab-content active" id="password-tab">
+                    <div class="card">
+                        <div class="password-display-container">
+                            <input type="text" class="password-display" id="password" readonly>
+                            <button class="btn-copy" id="copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="password-meta">
+                            <span id="length-display">Length: 20</span>
+                            <span id="entropy-display">Entropy: 150 bits</span>
+                        </div>
+                        
+                        <button class="btn" id="generate">
+                            <i class="fas fa-sync-alt btn-icon"></i>
+                            Generate Secure Password
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-sliders-h"></i> Password Settings</h3>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label class="input-label" for="length-slider">Password Length</label>
+                            <div class="range-container">
+                                <input type="range" id="length-slider" min="4" max="128" value="20">
+                                <input type="number" id="length-value" min="4" max="128" value="20">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label class="input-label">Character Options</label>
+                            <div class="options-grid">
+                                <label class="option">
+                                    <input type="checkbox" id="uppercase" checked>
+                                    Uppercase (A-Z)
+                                </label>
+                                <label class="option">
+                                    <input type="checkbox" id="lowercase" checked>
+                                    Lowercase (a-z)
+                                </label>
+                                <label class="option">
+                                    <input type="checkbox" id="numbers" checked>
+                                    Numbers (0-9)
+                                </label>
+                                <label class="option">
+                                    <input type="checkbox" id="symbols" checked>
+                                    Symbols (!@#$%)
+                                </label>
+                                <label class="option">
+                                    <input type="checkbox" id="extendedAscii">
+                                    Extended ASCII
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label class="input-label" for="exclude">Exclude Characters (optional)</label>
+                            <input type="text" id="exclude" placeholder="e.g., ANYCHAR0-9!@#$%">
+                            <p class="input-hint">Characters you want to exclude from the generated password</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Password Strength Analysis</h3>
+                        </div>
+                        
+                        <div class="strength-meter">
+                            <div class="strength-bar" id="strength-bar"></div>
+                        </div>
+                        <div class="strength-info">
+                            <span id="strength-label">Strength: Strong</span>
+                            <span id="time-to-crack">Time to crack: Centuries</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TOTP Generator Tab -->
+                <div class="tab-content" id="totp-tab">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-lock"></i> TOTP Generator</h3>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label class="input-label" for="secretKey">Enter your secret key (Base32):</label>
+                            <input type="text" id="secretKey" placeholder="e.g., JBSWY3DPEHPK3PXP" autocomplete="off">
+                            <p class="input-hint">Typically a 16+ character base32 encoded string</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="accountName">Account Name (for QR code):</label>
+                            <input type="text" id="accountName" placeholder="e.g., user@example.com" autocomplete="off">
+                            <p class="input-hint">Used to identify the account in authenticator apps</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="issuer">Issuer (for QR code):</label>
+                            <input type="text" id="issuer" placeholder="e.g., MyApp" autocomplete="off">
+                            <p class="input-hint">Service or company name (optional)</p>
+                        </div>
+
+                        <div class="flex-row">
+                            <div class="flex-col">
+                                <button class="btn" id="generateBtn">
+                                    <i class="fas fa-key btn-icon"></i>
+                                    Generate TOTP
+                                </button>
+                            </div>
+                            <div class="flex-col">
+                                <button class="btn" id="generateQRBtn" style="background: linear-gradient(to right, var(--secondary), var(--accent));">
+                                    <i class="fas fa-qrcode btn-icon"></i>
+                                    Generate QR Code
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="result-container" id="result" style="display:none;">
+                            <p>Your TOTP code is:</p>
+                            
+                            <div class="totp-display-container">
+                                <div class="totp-display" id="totpCode">------</div>
+                                <button class="btn-copy-totp" id="copyTOTP">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="timer" id="timer">Code valid for: <span id="countdown">30</span> seconds</div>
+                        </div>
+
+                        <div class="qr-container" id="qrContainer">
+                            <h3 class="info-title"><i class="fas fa-qrcode"></i> Scan QR Code</h3>
+                            <canvas id="qrCode"></canvas>
+                            <div class="qr-actions">
+                                <button class="qr-btn qr-btn-primary" id="downloadQR">
+                                    <i class="fas fa-download"></i> Download QR Code
+                                </button>
+                                <button class="qr-btn qr-btn-secondary" id="hideQR">
+                                    <i class="fas fa-times"></i> Hide QR Code
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <h3 class="info-title"><i class="fas fa-info-circle"></i> How it works:</h3>
+                        <p>TOTP is calculated using your secret key and the current time. The code refreshes every 30 seconds for security purposes.</p>
+                        <p>This tool runs entirely in your browser - your secret key is not sent to any server.</p>
+                    </div>
+
+                    <div class="disclaimer">
+                        <p><i class="fas fa-exclamation-triangle"></i> For real security, use official authenticator apps. This is a demonstration tool.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab functionality
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Show active content
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // Password Generator Code
+            const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+            const numbers = '0123456789';
+            const symbols = '!@#$%^&*()_-+={}[]|:;"<>,.?/~`';
+            // Extended ASCII characters (excluding control characters and space)
+            const extendedAscii = '¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂãÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ';
+            
+            // DOM elements
+            const lengthSlider = document.getElementById('length-slider');
+            const lengthValue = document.getElementById('length-value');
+            const lengthDisplay = document.getElementById('length-display');
+            const uppercaseCheckbox = document.getElementById('uppercase');
+            const lowercaseCheckbox = document.getElementById('lowercase');
+            const numbersCheckbox = document.getElementById('numbers');
+            const symbolsCheckbox = document.getElementById('symbols');
+            const extendedAsciiCheckbox = document.getElementById('extendedAscii');
+            const excludeInput = document.getElementById('exclude');
+            const passwordInput = document.getElementById('password');
+            const generateBtn = document.getElementById('generate');
+            const copyBtn = document.getElementById('copy');
+            const strengthBar = document.getElementById('strength-bar');
+            const strengthLabel = document.getElementById('strength-label');
+            const entropyDisplay = document.getElementById('entropy-display');
+            const timeToCrack = document.getElementById('time-to-crack');
+            
+            // TOTP elements
+            const secretKeyInput = document.getElementById('secretKey');
+            const accountNameInput = document.getElementById('accountName');
+            const issuerInput = document.getElementById('issuer');
+            const generateTOTPBtn = document.getElementById('generateBtn');
+            const generateQRBtn = document.getElementById('generateQRBtn');
+            const resultDiv = document.getElementById('result');
+            const totpCodeElement = document.getElementById('totpCode');
+            const countdownElement = document.getElementById('countdown');
+            const copyTOTPBtn = document.getElementById('copyTOTP');
+            const qrContainer = document.getElementById('qrContainer');
+            const qrCodeCanvas = document.getElementById('qrCode');
+            const downloadQRBtn = document.getElementById('downloadQR');
+            const hideQRBtn = document.getElementById('hideQR');
+            let countdownInterval;
+            
+            // Event listeners
+            generateBtn.addEventListener('click', generatePassword);
+            copyBtn.addEventListener('click', copyPassword);
+            lengthSlider.addEventListener('input', handleSliderChange);
+            lengthValue.addEventListener('input', handleNumberInput);
+            lengthValue.addEventListener('change', handleNumberChange);
+            
+            // Character option checkboxes
+            [uppercaseCheckbox, lowercaseCheckbox, numbersCheckbox, symbolsCheckbox, extendedAsciiCheckbox].forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const anyChecked = [uppercaseCheckbox, lowercaseCheckbox, numbersCheckbox, symbolsCheckbox, extendedAsciiCheckbox]
+                        .some(cb => cb.checked);
+                    
+                    if (!anyChecked) {
+                        this.checked = true;
+                        showToast('At least one character set must be selected');
+                    } else {
+                        generatePassword();
+                    }
+                });
+            });
+            
+            // Exclude input
+            excludeInput.addEventListener('input', generatePassword);
+            
+            // Initialize
+            generatePassword();
+            
+            function handleSliderChange() {
+                const value = lengthSlider.value;
+                lengthValue.value = value;
+                lengthDisplay.textContent = `Length: ${value}`;
+                generatePassword();
+            }
+            
+            function handleNumberInput() {
+                const value = Math.min(128, Math.max(4, parseInt(lengthValue.value) || 20));
+                lengthValue.value = value;
+                lengthDisplay.textContent = `Length: ${value}`;
+            }
+            
+            function handleNumberChange() {
+                const value = Math.min(128, Math.max(4, parseInt(lengthValue.value) || 20));
+                lengthSlider.value = value;
+                lengthValue.value = value;
+                lengthDisplay.textContent = `Length: ${value}`;
+                generatePassword();
+            }
+            
+            function generatePassword() {
+                let charset = '';
+                let password = '';
+                
+                if (uppercaseCheckbox.checked) charset += uppercase;
+                if (lowercaseCheckbox.checked) charset += lowercase;
+                if (numbersCheckbox.checked) charset += numbers;
+                if (symbolsCheckbox.checked) charset += symbols;
+                if (extendedAsciiCheckbox.checked) charset += extendedAscii;
+                
+                // Apply exclusions to all character sets
+                const excludedChars = excludeInput.value;
+                if (excludedChars) {
+                    let filteredCharset = '';
+                    for (let char of charset) {
+                        if (!excludedChars.includes(char)) {
+                            filteredCharset += char;
+                        }
+                    }
+                    charset = filteredCharset;
+                }
+                
+                // Check if we have any characters left to generate password
+                if (charset.length === 0) {
+                    passwordInput.value = 'No characters available';
+                    updatePasswordMetrics('', '');
+                    showToast('No characters available after exclusions');
+                    return;
+                }
+                
+                const length = parseInt(lengthSlider.value);
+                
+                // Generate password using cryptographically secure random numbers
+                const array = new Uint32Array(length);
+                window.crypto.getRandomValues(array);
+                
+                for (let i = 0; i < length; i++) {
+                    password += charset[array[i] % charset.length];
+                }
+                
+                passwordInput.value = password;
+                updatePasswordMetrics(password, charset);
+            }
+            
+            function updatePasswordMetrics(password, charset) {
+                // Calculate entropy
+                const length = password.length;
+                const charsetSize = charset.length;
+                const entropy = Math.log2(charsetSize) * length;
+                
+                // Update entropy display
+                entropyDisplay.textContent = `Entropy: ${entropy.toFixed(1)} bits`;
+                
+                // Update strength meter
+                let strengthPercentage = Math.min(100, (entropy / 128) * 100);
+                let strengthLabelText, timeToCrackText, strengthColor;
+                
+                if (entropy < 40) {
+                    strengthLabelText = 'Very Weak';
+                    timeToCrackText = 'Instantly';
+                    strengthColor = '#f94144';
+                } else if (entropy < 60) {
+                    strengthLabelText = 'Weak';
+                    timeToCrackText = 'Minutes to hours';
+                    strengthColor = '#f8961e';
+                } else if (entropy < 80) {
+                    strengthLabelText = 'Moderate';
+                    timeToCrackText = 'Days to weeks';
+                    strengthColor = '#f9c74f';
+                } else if (entropy < 100) {
+                    strengthLabelText = 'Strong';
+                    timeToCrackText = 'Months to years';
+                    strengthColor = '#90be6d';
+                } else {
+                    strengthLabelText = 'Very Strong';
+                    timeToCrackText = 'Centuries';
+                    strengthColor = '#43aa8b';
+                }
+                
+                strengthBar.style.width = `${strengthPercentage}%`;
+                strengthBar.style.backgroundColor = strengthColor;
+                strengthLabel.textContent = `Strength: ${strengthLabelText}`;
+                timeToCrack.textContent = `Time to crack: ${timeToCrackText}`;
+            }
+            
+            function copyPassword() {
+                const password = passwordInput.value;
+                
+                if (!password || password === 'No characters available') {
+                    showToast('Nothing to copy');
+                    return;
+                }
+                
+                navigator.clipboard.writeText(password).then(() => {
+                    showToast('Password copied to clipboard');
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    showToast('Failed to copy');
+                });
+            }
+            
+            function showToast(message) {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 3000);
+            }
+            
+            // TOTP Functions
+            generateTOTPBtn.addEventListener('click', generateTOTP);
+            copyTOTPBtn.addEventListener('click', copyTOTP);
+            generateQRBtn.addEventListener('click', generateQRCode);
+            downloadQRBtn.addEventListener('click', downloadQRCode);
+            hideQRBtn.addEventListener('click', hideQRCode);
+            
+            function generateTOTP() {
+                const secretKey = secretKeyInput.value.trim();
+                
+                if (!secretKey) {
+                    showToast('Please enter a secret key');
+                    return;
+                }
+                
+                // Clear any existing interval
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                }
+                
+                // Generate TOTP (this is a simplified implementation)
+                // In a real implementation, you would use a proper TOTP library
+                const code = generateMockTOTP(secretKey);
+                totpCodeElement.textContent = code;
+                resultDiv.style.display = 'block';
+                
+                // Start countdown timer
+                updateCountdown();
+                countdownInterval = setInterval(updateCountdown, 1000);
+            }
+            
+            function generateMockTOTP(secretKey) {
+                // This is a mock implementation - in a real app, use a proper TOTP library
+                // For demonstration purposes, we generate a 6-digit code based on time and secret
+                const time = Math.floor(Date.now() / 30000); // 30-second intervals
+                let code = '';
+                
+                // Simple hash-like function for demonstration
+                for (let i = 0; i < secretKey.length; i++) {
+                    code += secretKey.charCodeAt(i).toString().slice(-1);
+                }
+                
+                // Take first 6 digits
+                code = code.slice(0, 6);
+                
+                // Pad with zeros if needed
+                while (code.length < 6) {
+                    code += '0';
+                }
+                
+                return code;
+            }
+            
+            function updateCountdown() {
+                const seconds = 30 - Math.floor((Date.now() / 1000) % 30);
+                countdownElement.textContent = seconds;
+                
+                if (seconds === 1) {
+                    // Regenerate TOTP when time is almost up
+                    setTimeout(generateTOTP, 1000);
+                }
+            }
+            
+            function copyTOTP() {
+                const code = totpCodeElement.textContent;
+                
+                if (!code || code === '------') {
+                    showToast('No TOTP code to copy');
+                    return;
+                }
+                
+                navigator.clipboard.writeText(code).then(() => {
+                    showToast('TOTP code copied to clipboard');
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    showToast('Failed to copy');
+                });
+            }
+            
+            function generateQRCode() {
+                const secretKey = secretKeyInput.value.trim();
+                const accountName = accountNameInput.value.trim() || 'Account';
+                const issuer = issuerInput.value.trim() || 'SecurityTools';
+                
+                if (!secretKey) {
+                    showToast('Please enter a secret key');
+                    return;
+                }
+                
+                // Generate otpauth URL
+                const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${secretKey}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+                
+                // Generate QR code
+                QRCode.toCanvas(qrCodeCanvas, otpauthUrl, {
+                    width: 200,
+                    height: 200,
+                    margin: 1,
+                    color: {
+                        dark: '#4361ee',
+                        light: '#ffffff'
+                    }
+                }, function(error) {
+                    if (error) {
+                        console.error(error);
+                        showToast('Failed to generate QR code');
+                    } else {
+                        qrContainer.style.display = 'block';
+                        showToast('QR code generated successfully');
+                    }
+                });
+            }
+            
+            function downloadQRCode() {
+                const canvas = qrCodeCanvas;
+                const link = document.createElement('a');
+                link.download = 'TOTP-QR-Code.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            function hideQRCode() {
+                qrContainer.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

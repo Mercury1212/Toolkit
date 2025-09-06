@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reversible Text Encryptor (Argon2id)</title>
+  <style>
+    :root{
+      --bg:#0b1220;--card:#0f172a;--muted:#94a3b8;--text:#e2e8f0;--accent:#38bdf8;--accent-2:#22c55e;--danger:#f43f5e;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:900px;margin:40px auto;padding:24px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(148,163,184,.2);border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+    header{padding:22px 22px 0; cursor: pointer; position: relative;}
+    header:hover h1 { opacity: 0.8; }
+    h1{margin:0 0 6px;font-size:clamp(22px,4vw,32px);letter-spacing:.3px; transition: opacity 0.2s ease;}
+    p.sub{margin:0 0 16px;color:var(--muted)}
+    .header-instructions {
+      position: absolute;
+      top: 8px;
+      right: 22px;
+      font-size: 10px;
+      opacity: 0.7;
+      text-align: right;
+      max-width: 180px;
+    }
+    .grid{display:grid;gap:16px;padding:22px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    textarea, input[type="password"], input[type="text"]{width:100%;background:#0b132b;border:1px solid rgba(148,163,184,.25);color:var(--text);padding:12px 14px;border-radius:12px;font-size:15px;outline:none}
+    textarea{min-height:210px;resize:vertical}
+    label{display:block;margin:2px 0 6px;color:#cbd5e1;font-size:13px}
+    .row{display:flex;gap:10px;align-items:center}
+    .btns{display:flex;flex-wrap:wrap;gap:10px}
+    button{appearance:none;border:1px solid transparent;background:var(--accent);color:#082032;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;transition:.15s transform,.2s filter}
+    button.secondary{background:#1f2a44;color:var(--text);border-color:rgba(148,163,184,.25)}
+    button.success{background:var(--accent-2)}
+    button.danger{background:var(--danger);color:white}
+    button:active{transform:translateY(1px)}
+    .hint{font-size:12px;color:var(--muted)}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .footer{padding:6px 22px 18px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;align-items:center}
+    .badge{font-size:11px;border:1px solid rgba(148,163,184,.25);padding:4px 8px;border-radius:999px}
+    .status{min-height:20px;color:#cbd5e1}
+    .col { display:flex; flex-direction:column; gap:8px; }
+    .control-row { display:flex; gap:10px; align-items:center; }
+    .control-row > * { flex: 1 1 auto; }
+    #output { font-family: inherit; font-size: 14px; line-height:1.35; }
+    .loader { display: none; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid var(--accent); width: 16px; height: 16px; animation: spin 1s linear infinite; margin-right: 8px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading { display: inline-flex; align-items: center; }
+    #file { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header id="pageHeader"> <!-- Added ID for targeting -->
+        <h1>🔐 Argon2id Text Encryptor</h1>
+        <p class="sub">Encrypt and decrypt text in your browser using Argon2id key derivation.</p>
+        <div class="header-instructions">🗑️ Click to clear all<br>Ctrl+Click for new tab</div>
+      </header>
+
+      <div class="grid">
+        <div class="col">
+          <label for="input">Text to Encrypt</label>
+          <textarea id="input" placeholder="Type or paste text to encrypt..."></textarea>
+          <div class="btns" style="margin-top:6px">
+            <button id="btnScramble">Encrypt ⮕</button>
+            <button id="btnOpenIn" class="secondary">Open</button>
+            <button id="btnSaveIn" class="secondary">Save as</button>
+            <button id="btnCopyIn" class="secondary">Copy</button>
+            <button id="btnClearIn" class="secondary">Clear</button>
+          </div>
+        </div>
+
+        <div class="col">
+          <label for="output">Text to Decrypt</label>
+          <textarea id="output" placeholder="Type or paste text to decrypt..."></textarea>
+          <div class="btns" style="margin-top:6px">
+            <button id="btnUnscramble" class="success">⮜ Decrypt</button>
+            <button id="btnOpenOut" class="secondary">Open</button>
+            <button id="btnSaveOut" class="secondary">Save as</button>
+            <button id="btnCopy" class="secondary">Copy</button>
+            <button id="btnClearOut" class="secondary">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="padding-top:0">
+        <div>
+          <label for="password">Password</label>
+          <div class="control-row">
+            <input id="password" type="password" placeholder="Enter password (remember it!)" autocomplete="current-password" />
+            <button id="togglePw" class="secondary" title="Show/Hide">👁</button>
+          </div>
+          <div class="hint">Uses AES-GCM with Argon2id. Output is URL-safe base64.</div>
+        </div>
+
+        <div>
+          <label style="opacity:.7">Security Parameters</label>
+          <div class="control-row">
+            <select id="argonPreset" class="secondary" style="flex:1; padding:12px 14px; background:#0b132b; border-radius:12px; color:var(--text);">
+              <option value="interactive">Interactive (faster)</option>
+              <option value="moderate" selected>Moderate (balanced)</option>
+              <option value="sensitive">Sensitive (stronger)</option>
+            </select>
+          </div>
+          <div class="hint" id="paramInfo">Time: 3, Memory: 64MB, Parallelism: 1</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="status" id="status">Ready.</div>
+        <button id="btnWipe" class="danger">Wipe All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for opening files -->
+  <input type="file" id="fileInput" accept=".txt,.text,.json,.md" hidden />
+
+  <!-- Load argon2-browser -->
+  <script src="argon2-bundled.min.js"></script>
+
+  <script>
+  (async () => {
+    const qs = (s) => document.querySelector(s);
+    const input = qs('#input');
+    const output = qs('#output');
+    const password = qs('#password');
+    const statusEl = qs('#status');
+    const argonPreset = qs('#argonPreset');
+    const paramInfo = qs('#paramInfo');
+    const fileInput = qs('#fileInput');
+    const pageHeader = qs('#pageHeader'); // Get the header element
+    let currentFileTarget = null;
+
+    // Function to clear all content
+    function clearAllContent() {
+      input.value = '';
+      output.value = '';
+      password.value = '';
+      setStatus('All content cleared.');
+    }
+
+    // Add click event to header
+    pageHeader.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+Click or Cmd+Click - open in new tab
+        window.open(window.location.href, '_blank');
+      } else {
+        // Regular click - clear all content
+        clearAllContent();
+      }
+    });
+
+    // Add context menu to show instruction
+    pageHeader.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      alert("Click to clear all content\nCtrl+Click to open new tab");
+    });
+
+    function setStatus(msg, isWorking = false){
+      if (isWorking) {
+        statusEl.innerHTML = '<span class="loading"><span class="loader"></span>' + msg + '</span>';
+      } else {
+        statusEl.textContent = msg;
+      }
+    }
+
+    if (!window.isSecureContext) {
+      setStatus('This page must be served over HTTPS or http://localhost for Web Crypto.', false);
+      return;
+    }
+
+    try { if (window.argon2 && argon2.ready) await argon2.ready; } catch(e){ setStatus('Argon2 failed to initialize.', false); return; }
+    if (!window.argon2) { setStatus('Error: Argon2 library failed to load.', false); return; }
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    const argonParams = {
+      interactive: { time: 2, mem: 65536,  parallelism: 1 },
+      moderate:    { time: 3, mem: 524288,  parallelism: 1 },
+      sensitive:   { time: 5, mem: 1048576, parallelism: 1 }
+    };
+
+    function updateParamInfo() {
+      const preset = argonPreset.value;
+      const p = argonParams[preset];
+      paramInfo.textContent = `Time: ${p.time}, Memory: ${p.mem/1024}MB, Parallelism: ${p.parallelism}`;
+    }
+    argonPreset.addEventListener('change', updateParamInfo);
+    updateParamInfo();
+
+    function b64UrlEncode(buf){
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    }
+    function b64UrlDecode(str){
+      let s = str.replace(/-/g,'+').replace(/_/g,'/');
+      const pad = (4 - (s.length % 4)) % 4;
+      s += '='.repeat(pad);
+      return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+    }
+
+    async function deriveKey(pass, salt){
+      const p = argonParams[argonPreset.value];
+      const { hash } = await argon2.hash({
+        pass,
+        salt,
+        time: p.time,
+        mem: p.mem,
+        hashLen: 32,
+        parallelism: p.parallelism,
+        type: argon2.ArgonType.Argon2id
+      });
+      return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt','decrypt']);
+    }
+
+    function guardPw(){ 
+      if(!password.value){ throw new Error('Please enter a password.'); }
+      if(password.value.length < 4){ throw new Error('Password should be at least 4 characters.'); }
+    }
+
+    async function scramble(){
+      guardPw();
+      
+      // Show starting encryption status
+      setStatus('Starting encryption...', true);
+      
+      // Small delay to allow UI to update before intensive operation
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      setStatus('Deriving key (this may take a moment)...', true);
+      const key = await deriveKey(password.value, salt);
+      
+      setStatus('Encrypting data...', true);
+      const data = enc.encode(input.value);
+      const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, data));
+      
+      setStatus('Finalizing encryption...', true);
+      const blob = new Uint8Array(salt.length + iv.length + ct.length);
+      blob.set(salt, 0);
+      blob.set(iv, salt.length);
+      blob.set(ct, salt.length + iv.length);
+      output.value = b64UrlEncode(blob);
+      setStatus('Encrypted successfully ✔');
+    }
+
+    async function unscramble(){
+      guardPw();
+      const raw = (output.value || input.value || '').trim();
+      if(!raw){ throw new Error('Nothing to decrypt.'); }
+      
+      // Show starting decryption status
+      setStatus('Starting decryption...', true);
+      
+      // Small delay to allow UI to update before intensive operation
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      let bytes;
+      try { bytes = b64UrlDecode(raw); } catch{ throw new Error('Invalid format: not a valid base64 string.'); }
+      if(bytes.length <= 28){ throw new Error('Data too short or corrupted.'); }
+      const salt = bytes.slice(0,16);
+      const iv   = bytes.slice(16,28);
+      const ct   = bytes.slice(28);
+      
+      setStatus('Deriving key (this may take a moment)...', true);
+      const key = await deriveKey(password.value, salt);
+      
+      setStatus('Decrypting data...', true);
+      let pt;
+      try { pt = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct); } catch { throw new Error('Decryption failed.'); }
+      
+      setStatus('Finalizing decryption...', true);
+      input.value = dec.decode(pt);
+      setStatus('Decrypted successfully ✔');
+    }
+
+    function copyOut(){ if(!output.value) return setStatus('Nothing to copy.'); navigator.clipboard.writeText(output.value).then(()=>setStatus('Copied to clipboard.')); }
+    function copyIn(){ if(!input.value) return setStatus('Nothing to copy.'); navigator.clipboard.writeText(input.value).then(()=>setStatus('Copied to clipboard.')); }
+    function wipe(){ input.value=''; output.value=''; password.value=''; setStatus('All fields cleared.'); }
+
+    async function saveAsText(text, defaultName) {
+      if (!window.showSaveFilePicker) {
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = defaultName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{ description: 'Text', accept: { 'text/plain': ['.txt'] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        setStatus(`Saved as ${handle.name}`);
+      } catch (err) {
+        if (err.name !== 'AbortError') setStatus('Save failed.');
+        else setStatus('Save canceled.');
+      }
+    }
+
+    function openFile(targetElement) { currentFileTarget = targetElement; fileInput.click(); }
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        if (currentFileTarget) { currentFileTarget.value = text; setStatus(`Loaded ${file.name}`); }
+      } catch { setStatus('Error reading file.'); }
+      fileInput.value = '';
+    });
+
+    async function handle(fn){ try{ await fn(); } catch(err){ setStatus(err.message); } }
+
+    // Buttons
+    qs('#btnScramble').addEventListener('click', () => handle(scramble));
+    qs('#btnUnscramble').addEventListener('click', () => handle(unscramble));
+    qs('#btnCopy').addEventListener('click', () => handle(copyOut));
+    qs('#btnCopyIn').addEventListener('click', () => handle(copyIn));
+    qs('#btnClearIn').addEventListener('click', () => { input.value=''; setStatus('Input cleared.'); });
+    qs('#btnClearOut').addEventListener('click', () => { output.value=''; setStatus('Output cleared.'); });
+    qs('#btnWipe').addEventListener('click', wipe);
+    qs('#togglePw').addEventListener('click', () => { password.type = password.type === 'password' ? 'text' : 'password'; });
+    qs('#btnOpenIn').addEventListener('click', () => openFile(input));
+    qs('#btnOpenOut').addEventListener('click', () => openFile(output));
+    qs('#btnSaveIn').addEventListener('click', async () => { if(!input.value) return setStatus('Nothing to save.'); await saveAsText(input.value,'input.txt'); });
+    qs('#btnSaveOut').addEventListener('click', async () => { if(!output.value) return setStatus('Nothing to save.'); await saveAsText(output.value,'output.txt'); });
+
+    // Drag & drop
+    for(const area of [input, output]){
+      area.addEventListener('dragover', e=>{ e.preventDefault(); area.style.borderColor='var(--accent)'; });
+      area.addEventListener('dragleave', ()=>{ area.style.borderColor='rgba(148,163,184,.25)'; });
+      area.addEventListener('drop', async e=>{ e.preventDefault(); area.style.borderColor='rgba(148,163,184,.25)'; const file=e.dataTransfer.files?.[0]; if(file){ const text=await file.text(); area.value=text; setStatus('Loaded dropped file.'); } });
+    }
+
+    // Shortcuts
+    document.addEventListener('keydown', (e)=>{ if(e.ctrlKey&&e.key.toLowerCase()==='e'){ e.preventDefault(); handle(scramble); } if(e.ctrlKey&&e.key.toLowerCase()==='d'){ e.preventDefault(); handle(unscramble); } });
+
+    setStatus('Ready to encrypt/decrypt.');
+  })();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reversible Text Scrambler</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #e2e8f0;
+    --accent: #38bdf8;
+    --accent-hover: #0ea5e9;
+    --secondary: #94a3b8;
+    --danger: #f43f5e;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Ubuntu, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  .container {
+    max-width: 900px;
+    width: 100%;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  h2 {
+    margin: 0;
+    font-weight: 600;
+    text-align: center;
+    padding-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  h2:hover {
+    color: var(--accent);
+  }
+
+  h2::after {
+    content: "🗑️ Click to clear all | Ctrl+Click to open new tab";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 10px;
+    font-weight: normal;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .grid > div {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    margin: 8px 0;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--secondary);
+    background: #0e1a2a;
+    color: var(--text);
+    resize: vertical;
+    box-sizing: border-box;
+  }
+
+  textarea.drag-over {
+    border: 2px dashed var(--accent);
+    background-color: rgba(56, 189, 248, 0.1);
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--secondary);
+    background: #0e1a2a;
+    color: var(--text);
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 5px;
+  }
+
+  button {
+    padding: 10px 18px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--accent);
+    color: #0f172a;
+    flex-grow: 1;
+  }
+
+  button:hover {
+    background: var(--accent-hover);
+  }
+
+  button.secondary {
+    background: var(--secondary);
+    color: var(--text);
+  }
+
+  button.danger {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .seed-container {
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2 id="pageHeader">Reversible Text Scrambler</h2>
+
+  <div class="grid">
+    <div>
+      <label for="input">Input Text</label>
+      <textarea id="input" placeholder="Type or paste text to scramble… (or drag & drop a file)"></textarea>
+      <div class="buttons">
+        <button id="scramble">Scramble ⮕</button>
+        <button id="copyInput" class="secondary">Copy Input</button>
+        <button id="clearInput" class="danger">Clear</button>
+      </div>
+    </div>
+
+    <div>
+      <label for="output">Scrambled Output</label>
+      <textarea id="output" placeholder="Scrambled result… (or drag & drop a file)"></textarea>
+      <div class="buttons">
+        <button id="unscramble">⮜ Unscramble</button>
+        <button id="copyOutput" class="secondary">Copy Output</button>
+        <button id="clearOutput" class="danger">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="seed-container">
+    <label for="seed">Seed (any text)</label>
+    <input id="seed" type="text" placeholder="Enter a seed to make scrambling reversible">
+  </div>
+</div>
+
+<script>
+// Seeded pseudo-random generator
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+
+// Shuffle array with seeded RNG
+function shuffle(array, seed) {
+  const rng = mulberry32(seed);
+  let arr = array.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Convert string to seed number
+function seedFromString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+// Elements
+const input = document.getElementById('input');
+const output = document.getElementById('output');
+const seedInput = document.getElementById('seed');
+const pageHeader = document.getElementById('pageHeader');
+
+// Function to clear all content
+function clearAllContent() {
+  input.value = '';
+  output.value = '';
+  seedInput.value = '';
+}
+
+// Add click event to header
+pageHeader.addEventListener('click', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    // Ctrl+Click or Cmd+Click - open in new tab
+    window.open(window.location.href, '_blank');
+  } else {
+    // Regular click - clear all content
+    clearAllContent();
+  }
+});
+
+// Add context menu to show instruction
+pageHeader.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  alert("Click to clear all content\nCtrl+Click to open new tab");
+});
+
+document.getElementById('scramble').onclick = () => {
+  const text = input.value;
+  const seed = seedFromString(seedInput.value || 'default');
+  output.value = shuffle([...text], seed).join('');
+};
+
+document.getElementById('unscramble').onclick = () => {
+  const scrambled = output.value;
+  const seed = seedFromString(seedInput.value || 'default');
+  const indices = [...scrambled].map((_, i) => i);
+  const shuffledIndices = shuffle(indices, seed);
+
+  let arr = [];
+  for (let i = 0; i < scrambled.length; i++) {
+    arr[shuffledIndices[i]] = scrambled[i];
+  }
+  input.value = arr.join('');
+};
+
+// Copy & Paste buttons
+document.getElementById('copyInput').onclick = () => navigator.clipboard.writeText(input.value);
+document.getElementById('copyOutput').onclick = () => navigator.clipboard.writeText(output.value);
+
+// Clear buttons
+document.getElementById('clearInput').onclick = () => input.value = '';
+document.getElementById('clearOutput').onclick = () => output.value = '';
+
+// Drag and drop functionality
+function setupDragDrop(textarea) {
+  textarea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    textarea.classList.add('drag-over');
+  });
+
+  textarea.addEventListener('dragleave', () => {
+    textarea.classList.remove('drag-over');
+  });
+
+  textarea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    textarea.classList.remove('drag-over');
+    
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      textarea.value = event.target.result;
+    };
+    reader.readAsText(file);
+  });
+}
+
+// Set up drag and drop for both textareas
+setupDragDrop(input);
+setupDragDrop(output);
+</script>
+
+</body>
+</html>
