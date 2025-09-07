@@ -645,12 +645,7 @@
     }
 
     async function saveNoteToFile() {
-      if (currentNote.isEncrypted) {
-        setStatus('Cannot save while note is encrypted. Decrypt first.', false);
-        return;
-      }
-      
-      currentNote.content = editor.value;
+      currentNote.content = currentNote.isEncrypted ? currentNote.content : editor.value;
       
       try {
         let fileHandle;
@@ -746,31 +741,21 @@
 
     async function deriveKey(pass, salt, params) {
       const p = argonParams[params.preset || 'moderate'];
-      try {
-        if (window.argon2 && typeof argon2.hash === 'function') {
-          const { hash } = await argon2.hash({
-            pass,
-            salt,
-            time: p.time,
-            mem: p.mem,
-            hashLen: 32,
-            parallelism: p.parallelism,
-            type: argon2.ArgonType.Argon2id
-          });
-          return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt','decrypt']);
-        }
-      } catch (e) {
-        console.warn('Argon2 error, falling back to PBKDF2', e);
+      
+      if (!window.argon2 || typeof argon2.hash !== 'function') {
+        throw new Error('Argon2 is not available. Please ensure argon2-bundled.min.js is loaded correctly.');
       }
-
-      // Fallback to PBKDF2
-      const enc = new TextEncoder();
-      const keyMat = await crypto.subtle.importKey('raw', enc.encode(pass), {name:'PBKDF2'}, false, ['deriveKey']);
-      let iterations = 150000;
-      if ((params.preset || 'moderate') === 'interactive') iterations = 80000;
-      if ((params.preset || 'moderate') === 'sensitive') iterations = 300000;
-      const derived = await crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations, hash:'SHA-256' }, keyMat, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
-      return derived;
+      
+      const { hash } = await argon2.hash({
+        pass,
+        salt,
+        time: p.time,
+        mem: p.mem,
+        hashLen: 32,
+        parallelism: p.parallelism,
+        type: argon2.ArgonType.Argon2id
+      });
+      return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt','decrypt']);
     }
 
     async function encryptNoteContent(content, password, params) {
@@ -821,7 +806,6 @@
       
       let pt;
       try {
-        // FIXED: Use decrypt instead of encrypt
         pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
       } catch {
         throw new Error('Decryption failed. Wrong password or corrupted data.');
