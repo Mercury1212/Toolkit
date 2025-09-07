@@ -6,369 +6,1468 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tools Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Add SortableJS library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
         :root {
-            --bg-color: #f4f6f9;
-            --text-color: #333;
-            --header-bg: #2c3e50;
-            --header-text: #fff;
-            --card-bg: #fff;
-            --card-text: #333;
-            --card-desc: #666;
+            --bg-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-overlay: rgba(255, 255, 255, 0.05);
+            --text-color: #2c3e50;
+            --header-bg: rgba(255, 255, 255, 0.95);
+            --header-text: #2c3e50;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-text: #2c3e50;
+            --card-desc: #64748b;
             --icon-color: #3498db;
-            --accent-hover: #eaf3ff;
+            --accent-hover: rgba(116, 75, 162, 0.1);
+            --shadow-light: rgba(0, 0, 0, 0.1);
+            --shadow-dark: rgba(0, 0, 0, 0.2);
+            --border-color: rgba(255, 255, 255, 0.2);
+            --search-bg: rgba(255, 255, 255, 0.9);
+            --floating-elements: rgba(255, 255, 255, 0.1);
         }
 
         body.dark {
-            --bg-color: #181a1f;
-            --text-color: #e6e6e6;
-            --header-bg: #111;
-            --header-text: #f1f1f1;
-            --card-bg: #24262b;
-            --card-text: #e6e6e6;
-            --card-desc: #aaa;
-            --icon-color: #4aa3ff;
-            --accent-hover: #1f2a36;
+            --bg-color: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            --bg-overlay: rgba(0, 0, 0, 0.3);
+            --text-color: #e2e8f0;
+            --header-bg: rgba(20, 20, 30, 0.95);
+            --header-text: #f1f5f9;
+            --card-bg: rgba(30, 30, 45, 0.95);
+            --card-text: #e2e8f0;
+            --card-desc: #94a3b8;
+            --icon-color: #60a5fa;
+            --accent-hover: rgba(96, 165, 250, 0.15);
+            --shadow-light: rgba(0, 0, 0, 0.3);
+            --shadow-dark: rgba(0, 0, 0, 0.5);
+            --border-color: rgba(96, 165, 250, 0.2);
+            --search-bg: rgba(30, 30, 45, 0.95);
+            --floating-elements: rgba(96, 165, 250, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             margin: 0;
-            font-family: "Segoe UI", Arial, sans-serif;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
             background: var(--bg-color);
             color: var(--text-color);
-            transition: background 0.3s, color 0.3s;
+            transition: all 0.4s ease;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-overlay);
+            backdrop-filter: blur(20px);
+            z-index: -1;
+        }
+
+        /* Floating background elements */
+        .floating-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .floating-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--floating-elements);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .floating-circle:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 10%;
+            animation-delay: -1s;
+        }
+
+        .floating-circle:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            top: 70%;
+            right: 10%;
+            animation-delay: -3s;
+        }
+
+        .floating-circle:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            top: 40%;
+            left: 80%;
+            animation-delay: -2s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
         }
 
         header {
             background: var(--header-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
             color: var(--header-text);
-            padding: 20px;
+            padding: 25px 20px;
             text-align: center;
-            font-size: 1.5em;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 1.8em;
+            font-weight: 700;
+            box-shadow: 0 8px 32px var(--shadow-light);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: all 0.4s ease;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1em;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .search-container {
             position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box {
+            background: var(--search-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 25px;
+            padding: 12px 45px 12px 20px;
+            font-size: 14px;
+            color: var(--text-color);
+            width: 250px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--icon-color);
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.3);
+            width: 300px;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            color: var(--icon-color);
+            pointer-events: none;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 40px;
+            color: var(--card-desc);
+            cursor: pointer;
+            display: none;
+            font-size: 12px;
+            padding: 2px;
+        }
+
+        .clear-search:hover {
+            color: var(--icon-color);
+        }
+
+        .view-toggle {
+            display: flex;
+            background: var(--search-bg);
+            border-radius: 25px;
+            padding: 5px;
+            border: 2px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .view-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .view-btn.active {
+            background: var(--icon-color);
+            color: white;
+            box-shadow: 0 2px 10px rgba(52, 152, 219, 0.3);
         }
 
         .toggle-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: transparent;
-            border: none;
-            color: var(--header-text);
+            background: var(--search-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-color);
             font-size: 1.2em;
             cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .toggle-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px var(--shadow-light);
+            background: var(--accent-hover);
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reset-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .stats-bar {
+            background: var(--header-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--card-desc);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stats-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-hover);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
         }
 
         .container {
-            max-width: 1100px;
-            margin: 30px auto;
+            max-width: 1200px;
+            margin: 40px auto;
             padding: 0 20px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
+            gap: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .container.grid-view {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .container.list-view {
+            grid-template-columns: 1fr;
+            max-width: 800px;
         }
 
         .tool-card {
             background: var(--card-bg);
-            border-radius: 15px;
-            padding: 25px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
             text-align: center;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s;
+            box-shadow: 0 8px 32px var(--shadow-light);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
             color: var(--card-text);
             cursor: grab;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: slideInUp 0.5s ease forwards;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, var(--accent-hover), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tool-card:hover::before {
+            opacity: 1;
         }
 
         .tool-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
-            background: var(--accent-hover);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px var(--shadow-dark);
+            border-color: var(--icon-color);
+        }
+
+        .list-view .tool-card {
+            display: flex;
+            align-items: center;
+            text-align: left;
+            padding: 20px 30px;
+        }
+
+        .list-view .tool-card:hover {
+            transform: translateX(10px) scale(1.01);
         }
 
         .tool-icon {
-            font-size: 40px;
-            margin-bottom: 15px;
+            font-size: 48px;
+            margin-bottom: 20px;
             color: var(--icon-color);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .list-view .tool-icon {
+            font-size: 36px;
+            margin: 0 25px 0 0;
+        }
+
+        .tool-card:hover .tool-icon {
+            transform: scale(1.2) rotate(5deg);
+        }
+
+        .tool-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .list-view .tool-content {
+            flex: 1;
         }
 
         .tool-title {
-            font-size: 1.2em;
-            font-weight: 600;
-            margin-bottom: 10px;
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
         }
 
         .tool-desc {
-            font-size: 0.9em;
+            font-size: 0.95em;
             color: var(--card-desc);
+            line-height: 1.5;
+            transition: all 0.3s ease;
         }
 
-        /* Style for dragging */
-        .dragging {
-            opacity: 0.6;
-            background: var(--accent-hover);
+        .tool-card:hover .tool-title {
+            color: var(--icon-color);
         }
-        
-        /* Save notification */
-        .save-notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #2ecc71;
+
+        /* Category badges */
+        .tool-category {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--icon-color);
             color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: 600;
             opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.3s, transform 0.3s;
-            z-index: 1000;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
         }
-        
-        .save-notification.show {
+
+        .tool-card:hover .tool-category {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        /* Dragging state */
+        .dragging {
+            opacity: 0.7;
+            transform: rotate(5deg) scale(1.05);
+            z-index: 1000;
+            cursor: grabbing;
+        }
+
+        /* Save notification */
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 25px;
+            border-radius: 25px;
+            color: white;
+            opacity: 0;
+            transform: translateY(50px) scale(0.8);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            box-shadow: 0 10px 30px rgba(46, 204, 113, 0.3);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.3);
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--card-desc);
+            font-size: 1.1em;
+            display: none;
+        }
+
+        .no-results i {
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: var(--icon-color);
+            opacity: 0.5;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-controls {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .search-box {
+                width: 200px;
+            }
+
+            .search-box:focus {
+                width: 250px;
+            }
+
+            .container {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin: 20px auto;
+            }
+
+            .list-view .tool-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .list-view .tool-icon {
+                margin: 0 0 15px 0;
+            }
+
+            .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .view-toggle {
+                order: -1;
+            }
+
+            .tool-card {
+                padding: 20px;
+            }
+        }
+
+        /* Loading animation */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tool-card:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+
+        .tool-card:nth-child(3n) {
+            animation-delay: 0.2s;
+        }
+
+        /* Scroll indicator */
+        .scroll-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--icon-color), #9b59b6);
+            z-index: 1001;
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 0.1s ease;
+            width: 100%;
+        }
+
+        /* Filter dropdown */
+        .filter-dropdown {
+            position: relative;
+        }
+
+        .filter-btn {
+            background: var(--search-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 10px 15px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover {
+            background: var(--accent-hover);
+            border-color: var(--icon-color);
+        }
+
+        .filter-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 10px 0;
+            min-width: 200px;
+            box-shadow: 0 10px 30px var(--shadow-dark);
+            backdrop-filter: blur(20px);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            margin-top: 5px;
+        }
+
+        .filter-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .filter-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-item:hover {
+            background: var(--accent-hover);
+        }
+
+        .filter-item.active {
+            background: var(--icon-color);
+            color: white;
+        }
+
+        .filter-count {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-left: auto;
         }
     </style>
 </head>
 
 <body>
+    <div class="scroll-indicator" id="scrollIndicator"></div>
+    
+    <div class="floating-elements">
+        <div class="floating-circle"></div>
+        <div class="floating-circle"></div>
+        <div class="floating-circle"></div>
+    </div>
+
     <header>
-        🚀 My Tools Hub
-        <button class="toggle-btn" onclick="toggleDarkMode()">
-            <i class="fas fa-moon"></i>
-        </button>
+        <div class="header-content">
+            <div class="header-title">
+                🚀 My Tools Hub
+            </div>
+            
+            <div class="header-controls">
+                <div class="search-container">
+                    <input type="text" class="search-box" placeholder="Search tools..." id="searchBox">
+                    <i class="fas fa-times clear-search" id="clearSearch"></i>
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                
+                <div class="filter-dropdown">
+                    <button class="filter-btn" id="filterBtn">
+                        <i class="fas fa-filter"></i>
+                        <span id="filterText">All Categories</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-menu" id="filterMenu">
+                        <div class="filter-item active" data-category="all">
+                            <i class="fas fa-th-large"></i>
+                            <span>All Categories</span>
+                            <span class="filter-count" id="count-all">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="grid" title="Grid View">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-btn" data-view="list" title="List View">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+                
+                <button class="toggle-btn" id="darkModeBtn" title="Toggle Dark Mode (Ctrl+D)">
+                    <i class="fas fa-moon"></i>
+                </button>
+                
+                <button class="reset-btn" id="resetBtn" title="Reset Tool Order">
+                    <i class="fas fa-undo"></i>
+                    <span>Reset</span>
+                </button>
+            </div>
+        </div>
     </header>
 
-    <div class="container" id="toolsContainer">
-        <!-- Tool cards will be dynamically reordered by JavaScript -->
-        <a href="PasswordManager.html" target="_blank" class="tool-card" data-id="password-manager">
-            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
-            <div class="tool-title">Password Manager</div>
-            <div class="tool-desc">Securely store and manage passwords</div>
-        </a>
+    <div class="stats-bar">
+        <div class="stats-item">
+            <i class="fas fa-tools"></i>
+            <span><span id="toolCount">0</span> tools available</span>
+        </div>
+        <div class="stats-item">
+            <i class="fas fa-eye"></i>
+            <span><span id="visibleCount">0</span> visible</span>
+        </div>
+        <div class="stats-item" id="searchStats" style="display: none;">
+            <i class="fas fa-search"></i>
+            <span>Search: "<span id="currentSearch"></span>"</span>
+        </div>
+        <div class="stats-item" id="filterStats" style="display: none;">
+            <i class="fas fa-filter"></i>
+            <span>Filter: <span id="currentFilter">All</span></span>
+        </div>
+    </div>
 
-        <a href="WebAuthenticator.html" target="_blank" class="tool-card" data-id="authenticator">
-            <div class="tool-icon" style="color:#2ecc71;"><i class="fas fa-mobile-alt"></i></div>
-            <div class="tool-title">2FA Authenticator</div>
-            <div class="tool-desc">Save backup 2FA codes offline</div>
-        </a>
-
-        <a href="TextEncryptor.html" target="_blank" class="tool-card" data-id="text-encryptor">
-            <div class="tool-icon" style="color:#f39c12;"><i class="fas fa-key"></i></div>
-            <div class="tool-title">Text Encryptor</div>
-            <div class="tool-desc">Encrypt/decrypt text with Argon2 + AES</div>
-        </a>
-
-        <a href="SecurityToolkit.html" target="_blank" class="tool-card" data-id="security-toolkit">
-            <div class="tool-icon" style="color:#9b59b6;"><i class="fas fa-toolbox"></i></div>
-            <div class="tool-title">Security Toolkit</div>
-            <div class="tool-desc">Password generator & TOTP generator</div>
-        </a>
-
-        <a href="SimpleNotepad.html" target="_blank" class="tool-card" data-id="notepad">
-            <div class="tool-icon" style="color:#1abc9c;"><i class="fas fa-sticky-note"></i></div>
-            <div class="tool-title">Notepad</div>
-            <div class="tool-desc">Simple online notepad with encryption</div>
-        </a>
-
-        <a href="SecureNotepad.html" target="_blank" class="tool-card" data-id="secure-notepad">
-            <div class="tool-icon" style="color:#3498db;"><i class="fas fa-sticky-note"></i></div>
-            <div class="tool-title">Secure Notepad</div>
-            <div class="tool-desc">Secure text notes with encryption</div>
-        </a>
-
-        <a href="Scrambler.html" target="_blank" class="tool-card" data-id="scrambler">
-            <div class="tool-icon" style="color:#e67e22;"><i class="fas fa-random"></i></div>
-            <div class="tool-title">Text Scrambler</div>
-            <div class="tool-desc">Reversible Text Scrambler with password protection</div>
-        </a>
-
-        <a href="FileLocker.html" target="_blank" class="tool-card" data-id="file-locker">
-            <div class="tool-icon" style="color:#f39c12;"><i class="fa-solid fa-file-shield"></i></div>
-            <div class="tool-title">File Locker</div>
-            <div class="tool-desc">Encrypt files using Argon2id + AES</div>
-        </a>
-
-        <a href="PowerCalculator.html" target="_blank" class="tool-card" data-id="power-calculator">
-            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-bolt"></i></div>
-            <div class="tool-title">Power Calculator</div>
-            <div class="tool-desc">Class D Amplifier Power Calculator</div>
-        </a>
-
-        <a href="QRTools.html" target="_blank" class="tool-card" data-id="qrcode-reader">
-            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
-            <div class="tool-title">My QR Tools</div>
-            <div class="tool-desc">Self-Hosted QR tools</div>
-        </a>
-
-        <a href="https://scanqr.org/qr-code-generator/" target="_blank" class="tool-card" data-id="qrcode-generator">
-            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
-            <div class="tool-title">scanqr.org</div>
-            <div class="tool-desc">QR Code generator - Scanner</div>
-        </a>
-
-        <a href="https://app.keeweb.info//" target="_blank" class="tool-card" data-id="keeweb">
-            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
-            <div class="tool-title">keeweb</div>
-            <div class="tool-desc">KeePassXC official site</div>
-        </a>
-
-        <a href="https://www.facebook.com/" target="_blank" class="tool-card" data-id="facebook">
+    <div class="container grid-view" id="toolsContainer">
+        <!-- Tool cards with categories -->
+        <a href="https://www.facebook.com/" target="_blank" class="tool-card" data-id="facebook" data-category="Social">
+            <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#1877f2;"><i class="fab fa-facebook"></i></div>
-            <div class="tool-title">Facebook</div>
-            <div class="tool-desc">Connect with friends and family</div>
+            <div class="tool-content">
+                <div class="tool-title">Facebook</div>
+                <div class="tool-desc">Connect with friends and family worldwide</div>
+            </div>
         </a>
 
-        <a href="https://www.messenger.com/" target="_blank" class="tool-card" data-id="messenger">
+        <a href="https://www.messenger.com/" target="_blank" class="tool-card" data-id="messenger" data-category="Social">
+            <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#00b2ff;"><i class="fab fa-facebook-messenger"></i></div>
-            <div class="tool-title">Messenger</div>
-            <div class="tool-desc">Chat with Facebook friends</div>
+            <div class="tool-content">
+                <div class="tool-title">Messenger</div>
+                <div class="tool-desc">Chat with Facebook friends and contacts</div>
+            </div>
         </a>
 
-        <a href="https://www.instagram.com/" target="_blank" class="tool-card" data-id="instagram">
+        <a href="https://www.instagram.com/" target="_blank" class="tool-card" data-id="instagram" data-category="Social">
+            <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#e1306c;"><i class="fab fa-instagram"></i></div>
-            <div class="tool-title">Instagram</div>
-            <div class="tool-desc">Photos, reels and stories</div>
+            <div class="tool-content">
+                <div class="tool-title">Instagram</div>
+                <div class="tool-desc">Share photos, reels and stories with the world</div>
+            </div>
         </a>
 
-        <a href="https://www.tiktok.com/" target="_blank" class="tool-card" data-id="tiktok">
+        <a href="https://www.tiktok.com/" target="_blank" class="tool-card" data-id="tiktok" data-category="Social">
+            <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#000000;"><i class="fab fa-tiktok"></i></div>
-            <div class="tool-title">TikTok</div>
-            <div class="tool-desc">Short-form videos and trends</div>
+            <div class="tool-content">
+                <div class="tool-title">TikTok</div>
+                <div class="tool-desc">Discover short-form videos and trending content</div>
+            </div>
         </a>
 
-        <a href="https://twitter.com/" target="_blank" class="tool-card" data-id="twitter">
+        <a href="https://twitter.com/" target="_blank" class="tool-card" data-id="twitter" data-category="Social">
+            <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#1da1f2;"><i class="fab fa-twitter"></i></div>
-            <div class="tool-title">Twitter (X)</div>
-            <div class="tool-desc">Latest news and trending topics</div>
+            <div class="tool-content">
+                <div class="tool-title">Twitter (X)</div>
+                <div class="tool-desc">Latest news and trending topics worldwide</div>
+            </div>
         </a>
 
-        <a href="https://www.youtube.com/" target="_blank" class="tool-card" data-id="youtube">
+        <a href="https://www.youtube.com/" target="_blank" class="tool-card" data-id="youtube" data-category="Entertainment">
+            <div class="tool-category">Entertainment</div>
             <div class="tool-icon" style="color:#ff0000;"><i class="fab fa-youtube"></i></div>
-            <div class="tool-title">YouTube</div>
-            <div class="tool-desc">Watch and share videos</div>
+            <div class="tool-content">
+                <div class="tool-title">YouTube</div>
+                <div class="tool-desc">Watch and share videos from creators worldwide</div>
+            </div>
         </a>
 
-        <a href="https://www.netflix.com/" target="_blank" class="tool-card" data-id="netflix">
+        <a href="https://www.netflix.com/" target="_blank" class="tool-card" data-id="netflix" data-category="Entertainment">
+            <div class="tool-category">Entertainment</div>
             <div class="tool-icon" style="color:#e50914;"><i class="fas fa-film"></i></div>
-            <div class="tool-title">Netflix</div>
-            <div class="tool-desc">Watch TV shows and movies online</div>
+            <div class="tool-content">
+                <div class="tool-title">Netflix</div>
+                <div class="tool-desc">Stream TV shows and movies on demand</div>
+            </div>
         </a>
 
-        <a href="https://github.com/" target="_blank" class="tool-card" data-id="github">
+        <a href="https://github.com/" target="_blank" class="tool-card" data-id="github" data-category="Development">
+            <div class="tool-category">Development</div>
             <div class="tool-icon" style="color:#333;"><i class="fab fa-github"></i></div>
-            <div class="tool-title">GitHub</div>
-            <div class="tool-desc">Code hosting and collaboration</div>
+            <div class="tool-content">
+                <div class="tool-title">GitHub</div>
+                <div class="tool-desc">Code hosting and collaboration platform</div>
+            </div>
         </a>
 
-        <a href="https://www.google.com/" target="_blank" class="tool-card" data-id="google">
+        <a href="https://www.google.com/" target="_blank" class="tool-card" data-id="google" data-category="Search">
+            <div class="tool-category">Search</div>
             <div class="tool-icon" style="color:#4285f4;"><i class="fab fa-google"></i></div>
-            <div class="tool-title">Google</div>
-            <div class="tool-desc">Search the world's information</div>
+            <div class="tool-content">
+                <div class="tool-title">Google</div>
+                <div class="tool-desc">Search the world's information instantly</div>
+            </div>
         </a>
 
-        <a href="https://mail.google.com/" target="_blank" class="tool-card" data-id="gmail">
+        <a href="https://mail.google.com/" target="_blank" class="tool-card" data-id="gmail" data-category="Productivity">
+            <div class="tool-category">Productivity</div>
             <div class="tool-icon" style="color:#ea4335;"><i class="fas fa-envelope"></i></div>
-            <div class="tool-title">Gmail</div>
-            <div class="tool-desc">Google's free email service</div>
+            <div class="tool-content">
+                <div class="tool-title">Gmail</div>
+                <div class="tool-desc">Google's secure and reliable email service</div>
+            </div>
         </a>
 
-        <a href="https://drive.google.com/" target="_blank" class="tool-card" data-id="drive">
+        <a href="https://drive.google.com/" target="_blank" class="tool-card" data-id="drive" data-category="Cloud Storage">
+            <div class="tool-category">Cloud Storage</div>
             <div class="tool-icon" style="color:#34a853;"><i class="fab fa-google-drive"></i></div>
-            <div class="tool-title">Google Drive</div>
-            <div class="tool-desc">Store and access your files anywhere</div>
+            <div class="tool-content">
+                <div class="tool-title">Google Drive</div>
+                <div class="tool-desc">Store and access your files from anywhere</div>
+            </div>
         </a>
 
-        <a href="https://www.terabox.com/" target="_blank" class="tool-card" data-id="terabox">
+        <a href="https://www.terabox.com/" target="_blank" class="tool-card" data-id="terabox" data-category="Cloud Storage">
+            <div class="tool-category">Cloud Storage</div>
             <div class="tool-icon" style="color:#0066ff;"><i class="fas fa-cloud"></i></div>
-            <div class="tool-title">Terabox</div>
-            <div class="tool-desc">Free 1TB cloud storage</div>
+            <div class="tool-content">
+                <div class="tool-title">Terabox</div>
+                <div class="tool-desc">Free 1TB cloud storage solution</div>
+            </div>
         </a>
 
-        <a href="https://www.linkedin.com/" target="_blank" class="tool-card" data-id="linkedin">
+        <a href="https://www.linkedin.com/" target="_blank" class="tool-card" data-id="linkedin" data-category="Social">
+            <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#0a66c2;"><i class="fab fa-linkedin"></i></div>
-            <div class="tool-title">LinkedIn</div>
-            <div class="tool-desc">Professional networking</div>
+            <div class="tool-content">
+                <div class="tool-title">LinkedIn</div>
+                <div class="tool-desc">Professional networking and career development</div>
+            </div>
         </a>
 
-        <a href="https://shopee.ph/" target="_blank" class="tool-card" data-id="shopee">
+        <a href="https://shopee.ph/" target="_blank" class="tool-card" data-id="shopee" data-category="Shopping">
+            <div class="tool-category">Shopping</div>
             <div class="tool-icon" style="color:#ee4d2d;"><i class="fas fa-shopping-bag"></i></div>
-            <div class="tool-title">Shopee</div>
-            <div class="tool-desc">Online shopping made easy</div>
+            <div class="tool-content">
+                <div class="tool-title">Shopee</div>
+                <div class="tool-desc">Online shopping made easy and affordable</div>
+            </div>
         </a>
 
-        <a href="https://www.lazada.com.ph/" target="_blank" class="tool-card" data-id="lazada">
+        <a href="https://www.lazada.com.ph/" target="_blank" class="tool-card" data-id="lazada" data-category="Shopping">
+            <div class="tool-category">Shopping</div>
             <div class="tool-icon" style="color:#1a9fff;"><i class="fas fa-store"></i></div>
-            <div class="tool-title">Lazada</div>
-            <div class="tool-desc">Shop for everything online</div>
+            <div class="tool-content">
+                <div class="tool-title">Lazada</div>
+                <div class="tool-desc">Shop for everything online with great deals</div>
+            </div>
         </a>
 
-        <a href="https://app.grass.io/dashboard" target="_blank" class="tool-card" data-id="grass">
+        <a href="https://app.grass.io/dashboard" target="_blank" class="tool-card" data-id="grass" data-category="Crypto">
+            <div class="tool-category">Crypto</div>
             <div class="tool-icon" style="color:#28a745;"><i class="fas fa-leaf"></i></div>
-            <div class="tool-title">Grass</div>
-            <div class="tool-desc">Earn rewards with Grass dashboard</div>
+            <div class="tool-content">
+                <div class="tool-title">Grass</div>
+                <div class="tool-desc">Earn rewards with Grass dashboard</div>
+            </div>
         </a>
 
-        <a href="https://chat.deepseek.com/" target="_blank" class="tool-card" data-id="deepseek">
+        <a href="https://chat.deepseek.com/" target="_blank" class="tool-card" data-id="deepseek" data-category="AI">
+            <div class="tool-category">AI</div>
             <div class="tool-icon" style="color:#6c63ff;"><i class="fas fa-brain"></i></div>
-            <div class="tool-title">DeepSeek Chat</div>
-            <div class="tool-desc">AI-powered chatbot platform</div>
+            <div class="tool-content">
+                <div class="tool-title">DeepSeek Chat</div>
+                <div class="tool-desc">Advanced AI-powered chatbot platform</div>
+            </div>
         </a>
 
-        <a href="https://chatgpt.com/" target="_blank" class="tool-card" data-id="chatgpt">
+        <a href="https://chatgpt.com/" target="_blank" class="tool-card" data-id="chatgpt" data-category="AI">
+            <div class="tool-category">AI</div>
             <div class="tool-icon" style="color:#10a37f;"><i class="fas fa-robot"></i></div>
-            <div class="tool-title">ChatGPT</div>
-            <div class="tool-desc">Conversational AI assistant</div>
+            <div class="tool-content">
+                <div class="tool-title">ChatGPT</div>
+                <div class="tool-desc">OpenAI's conversational AI assistant</div>
+            </div>
         </a>
 
-        <a href="https://terabox.hnn.workers.dev/" target="_blank" class="tool-card" data-id="terabox-proxy">
+        <a href="https://terabox.hnn.workers.dev/" target="_blank" class="tool-card" data-id="terabox-proxy" data-category="Cloud Storage">
+            <div class="tool-category">Cloud Storage</div>
             <div class="tool-icon" style="color:#0066ff;"><i class="fas fa-cloud"></i></div>
-            <div class="tool-title">Terabox Proxy</div>
-            <div class="tool-desc">Access Terabox files via proxy</div>
+            <div class="tool-content">
+                <div class="tool-title">Terabox Proxy</div>
+                <div class="tool-desc">Access Terabox files via secure proxy</div>
+            </div>
         </a>
 
-        <a href="https://smartthingsfind.samsung.com/" target="_blank" class="tool-card" data-id="samsung-find">
+        <a href="https://smartthingsfind.samsung.com/" target="_blank" class="tool-card" data-id="samsung-find" data-category="Utilities">
+            <div class="tool-category">Utilities</div>
             <div class="tool-icon" style="color:#1428a0;"><i class="fas fa-map-marker-alt"></i></div>
-            <div class="tool-title">Samsung Find</div>
-            <div class="tool-desc">Locate your Samsung devices</div>
+            <div class="tool-content">
+                <div class="tool-title">Samsung Find</div>
+                <div class="tool-desc">Locate and manage your Samsung devices</div>
+            </div>
         </a>
 
-        <a href="https://music.youtube.com/" target="_blank" class="tool-card" data-id="youtube-music">
+        <a href="https://music.youtube.com/" target="_blank" class="tool-card" data-id="youtube-music" data-category="Entertainment">
+            <div class="tool-category">Entertainment</div>
             <div class="tool-icon" style="color:#ff0000;"><i class="fas fa-music"></i></div>
-            <div class="tool-title">YouTube Music</div>
-            <div class="tool-desc">Stream and discover music</div>
+            <div class="tool-content">
+                <div class="tool-title">YouTube Music</div>
+                <div class="tool-desc">Stream and discover music from YouTube</div>
+            </div>
         </a>
         
-        <a href="https://login.tailscale.com/admin/machines" target="_blank" class="tool-card" data-id="tailscale">
+        <a href="https://login.tailscale.com/admin/machines" target="_blank" class="tool-card" data-id="tailscale" data-category="Networking">
+            <div class="tool-category">Networking</div>
             <div class="tool-icon" style="color:#2b6cb0;"><i class="fas fa-laptop-code"></i></div>
-            <div class="tool-title">Tailscale VPN</div>
-            <div class="tool-desc">Manage connected devices in your Tailscale network</div>
+            <div class="tool-content">
+                <div class="tool-title">Tailscale VPN</div>
+                <div class="tool-desc">Manage connected devices in your network</div>
+            </div>
         </a>
 
-        <a href="https://dash.cloudflare.com/" target="_blank" class="tool-card" data-id="cloudflare">
+        <a href="https://dash.cloudflare.com/" target="_blank" class="tool-card" data-id="cloudflare" data-category="Networking">
+            <div class="tool-category">Networking</div>
             <div class="tool-icon" style="color:#f38020;"><i class="fas fa-cloud"></i></div>
-            <div class="tool-title">Cloudflare Dashboard</div>
-            <div class="tool-desc">Manage your domains, DNS, and security settings</div>
+            <div class="tool-content">
+                <div class="tool-title">Cloudflare Dashboard</div>
+                <div class="tool-desc">Manage domains, DNS, and security settings</div>
+            </div>
+        </a>
+
+        <a href="PasswordManager.html" target="_blank" class="tool-card" data-id="password-manager" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Password Manager</div>
+                <div class="tool-desc">Securely store and manage passwords with advanced encryption</div>
+            </div>
+        </a>
+
+        <a href="WebAuthenticator.html" target="_blank" class="tool-card" data-id="authenticator" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#2ecc71;"><i class="fas fa-mobile-alt"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">2FA Authenticator</div>
+                <div class="tool-desc">Save backup 2FA codes offline for enhanced security</div>
+            </div>
+        </a>
+
+        <a href="TextEncryptor.html" target="_blank" class="tool-card" data-id="text-encryptor" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#f39c12;"><i class="fas fa-key"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Text Encryptor</div>
+                <div class="tool-desc">Encrypt/decrypt text with Argon2 + AES encryption</div>
+            </div>
+        </a>
+
+        <a href="SecurityToolkit.html" target="_blank" class="tool-card" data-id="security-toolkit" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#9b59b6;"><i class="fas fa-toolbox"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Security Toolkit</div>
+                <div class="tool-desc">Password generator & TOTP generator tools</div>
+            </div>
+        </a>
+
+        <a href="SimpleNotepad.html" target="_blank" class="tool-card" data-id="notepad" data-category="Productivity">
+            <div class="tool-category">Productivity</div>
+            <div class="tool-icon" style="color:#1abc9c;"><i class="fas fa-sticky-note"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Notepad</div>
+                <div class="tool-desc">Simple online notepad with encryption capabilities</div>
+            </div>
+        </a>
+
+        <a href="SecureNotepad.html" target="_blank" class="tool-card" data-id="secure-notepad" data-category="Productivity">
+            <div class="tool-category">Productivity</div>
+            <div class="tool-icon" style="color:#3498db;"><i class="fas fa-sticky-note"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Secure Notepad</div>
+                <div class="tool-desc">Secure text notes with advanced encryption</div>
+            </div>
+        </a>
+
+        <a href="Scrambler.html" target="_blank" class="tool-card" data-id="scrambler" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#e67e22;"><i class="fas fa-random"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Text Scrambler</div>
+                <div class="tool-desc">Reversible text scrambler with password protection</div>
+            </div>
+        </a>
+
+        <a href="FileLocker.html" target="_blank" class="tool-card" data-id="file-locker" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#f39c12;"><i class="fa-solid fa-file-shield"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">File Locker</div>
+                <div class="tool-desc">Encrypt files using Argon2id + AES encryption</div>
+            </div>
+        </a>
+
+        <a href="PowerCalculator.html" target="_blank" class="tool-card" data-id="power-calculator" data-category="Utilities">
+            <div class="tool-category">Utilities</div>
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-bolt"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">Power Calculator</div>
+                <div class="tool-desc">Class D Amplifier Power Calculator for audio systems</div>
+            </div>
+        </a>
+
+        <a href="QRTools.html" target="_blank" class="tool-card" data-id="qrcode-reader" data-category="Utilities">
+            <div class="tool-category">Utilities</div>
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">My QR Tools</div>
+                <div class="tool-desc">Self-hosted QR code generation and scanning tools</div>
+            </div>
+        </a>
+
+        <a href="https://scanqr.org/qr-code-generator/" target="_blank" class="tool-card" data-id="qrcode-generator" data-category="Utilities">
+            <div class="tool-category">Utilities</div>
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">scanqr.org</div>
+                <div class="tool-desc">QR Code generator and scanner online service</div>
+            </div>
+        </a>
+
+        <a href="https://app.keeweb.info/" target="_blank" class="tool-card" data-id="keeweb" data-category="Security">
+            <div class="tool-category">Security</div>
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
+            <div class="tool-content">
+                <div class="tool-title">KeeWeb</div>
+                <div class="tool-desc">KeePassXC compatible password manager</div>
+            </div>
         </a>
     </div>
 
-    <div class="save-notification" id="saveNotification">Order saved!</div>
+    <div class="no-results" id="noResults">
+        <i class="fas fa-search"></i>
+        <h3>No tools found</h3>
+        <p>Try adjusting your search terms or browse all available tools.</p>
+    </div>
+
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText">Notification</span>
+    </div>
 
     <script>
-        // Dark mode toggle with persistence
+        // Global variables
+        let allTools = [];
+        let filteredTools = [];
+        let currentView = 'grid';
+        let currentCategory = 'all';
+        let searchTerm = '';
+        let categories = new Set();
+        let sortableInstance = null;
+
+        // Category icons mapping
+        const categoryIcons = {
+            'Security': 'fas fa-shield-alt',
+            'Productivity': 'fas fa-briefcase',
+            'Utilities': 'fas fa-wrench',
+            'Social': 'fas fa-users',
+            'Entertainment': 'fas fa-play-circle',
+            'Development': 'fas fa-code',
+            'Search': 'fas fa-search',
+            'Cloud Storage': 'fas fa-cloud',
+            'Shopping': 'fas fa-shopping-cart',
+            'Crypto': 'fas fa-coins',
+            'AI': 'fas fa-robot',
+            'Networking': 'fas fa-network-wired'
+        };
+
+        // Utility function for debouncing
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Error handling function
+        function handleError(error, context) {
+            console.error(`Error in ${context}:`, error);
+            showNotification(`Error: ${error.message}`, 'error');
+        }
+
+        // Initialize the application
+        function initializeApp() {
+            try {
+                loadPreferences();
+                collectAllTools();
+                buildCategoryFilter();
+                updateStats();
+                initializeSearch();
+                initializeViewToggle();
+                initializeFilterDropdown();
+                initializeSortable();
+                applySavedOrder();
+                updateScrollIndicator();
+                initializeKeyboardShortcuts();
+                addEventListeners();
+                
+                // Apply saved filters after initialization
+                if (currentCategory !== 'all') {
+                    filterByCategory(currentCategory);
+                }
+                
+                if (searchTerm) {
+                    applyFilters();
+                    updateStats();
+                }
+                
+                // Show initial animation
+                setTimeout(() => {
+                    document.querySelectorAll('.tool-card').forEach((card, index) => {
+                        card.style.animationDelay = `${index * 0.05}s`;
+                    });
+                }, 100);
+
+                showNotification('Tools Hub loaded successfully!', 'success');
+            } catch (error) {
+                handleError(error, 'initialization');
+            }
+        }
+
+        // Add all event listeners
+        function addEventListeners() {
+            // Window events
+            window.addEventListener('scroll', debounce(updateScrollIndicator, 10));
+            window.addEventListener('resize', debounce(handleResize, 250));
+            
+            // Click outside to close dropdowns
+            document.addEventListener('click', (e) => {
+                const filterMenu = document.getElementById('filterMenu');
+                const filterBtn = document.getElementById('filterBtn');
+                
+                if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+                    filterMenu.classList.remove('show');
+                }
+            });
+
+            // Dark mode button
+            document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
+            
+            // Reset button
+            document.getElementById('resetBtn').addEventListener('click', resetToolOrder);
+            
+            // Clear search button
+            document.getElementById('clearSearch').addEventListener('click', clearSearch);
+        }
+
+        // Collect all tools from the DOM
+        function collectAllTools() {
+            allTools = Array.from(document.querySelectorAll('.tool-card'));
+            filteredTools = [...allTools];
+            
+            // Collect unique categories
+            allTools.forEach(tool => {
+                const category = tool.dataset.category;
+                if (category) {
+                    categories.add(category);
+                }
+            });
+        }
+
+        // Build category filter dropdown
+        function buildCategoryFilter() {
+            const filterMenu = document.getElementById('filterMenu');
+            const allItem = filterMenu.querySelector('[data-category="all"]');
+            
+            // Clear existing items except "All"
+            const existingItems = filterMenu.querySelectorAll('.filter-item:not([data-category="all"])');
+            existingItems.forEach(item => item.remove());
+            
+            // Add event listener to "All Categories" item
+            if (allItem) {
+                allItem.addEventListener('click', () => filterByCategory('all'));
+            }
+            
+            // Add category items
+            Array.from(categories).sort().forEach(category => {
+                const item = document.createElement('div');
+                item.className = 'filter-item';
+                item.dataset.category = category.toLowerCase().replace(/\s+/g, '-');
+                
+                const icon = categoryIcons[category] || 'fas fa-folder';
+                const count = allTools.filter(tool => tool.dataset.category === category).length;
+                
+                item.innerHTML = `
+                    <i class="${icon}"></i>
+                    <span>${category}</span>
+                    <span class="filter-count">${count}</span>
+                `;
+                
+                item.addEventListener('click', () => filterByCategory(category));
+                filterMenu.appendChild(item);
+            });
+            
+            // Update "All" count
+            document.getElementById('count-all').textContent = allTools.length;
+        }
+
+        // Initialize filter dropdown
+        function initializeFilterDropdown() {
+            const filterBtn = document.getElementById('filterBtn');
+            const filterMenu = document.getElementById('filterMenu');
+            
+            filterBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                filterMenu.classList.toggle('show');
+            });
+        }
+
+        // Filter by category
+        function filterByCategory(category) {
+            currentCategory = category === 'all' ? 'all' : category.toLowerCase();
+            
+            // Update UI
+            const filterText = document.getElementById('filterText');
+            const filterItems = document.querySelectorAll('.filter-item');
+            
+            filterItems.forEach(item => item.classList.remove('active'));
+            
+            if (category === 'all') {
+                filterText.textContent = 'All Categories';
+                document.querySelector('[data-category="all"]').classList.add('active');
+            } else {
+                filterText.textContent = category;
+                const targetDataCategory = category.toLowerCase().replace(/\s+/g, '-');
+                const targetItem = document.querySelector(`[data-category="${targetDataCategory}"]`);
+                if (targetItem) targetItem.classList.add('active');
+            }
+            
+            // Close dropdown
+            document.getElementById('filterMenu').classList.remove('show');
+            
+            // Apply filter
+            applyFilters();
+            updateFilterStats();
+            
+            localStorage.setItem('selectedCategory', currentCategory);
+        }
+
+        // Update filter stats
+        function updateFilterStats() {
+            const filterStats = document.getElementById('filterStats');
+            const currentFilterSpan = document.getElementById('currentFilter');
+            
+            if (currentCategory === 'all') {
+                filterStats.style.display = 'none';
+            } else {
+                filterStats.style.display = 'flex';
+                // Find the original category name
+                const originalCategory = Array.from(categories).find(cat => 
+                    cat.toLowerCase() === currentCategory.toLowerCase()
+                );
+                currentFilterSpan.textContent = originalCategory || currentCategory;
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const toolCount = document.getElementById('toolCount');
+            const visibleCount = document.getElementById('visibleCount');
+            
+            toolCount.textContent = allTools.length;
+            visibleCount.textContent = filteredTools.length;
+            
+            // Update search stats
+            const searchStats = document.getElementById('searchStats');
+            const currentSearch = document.getElementById('currentSearch');
+            
+            if (searchTerm) {
+                searchStats.style.display = 'flex';
+                currentSearch.textContent = searchTerm;
+            } else {
+                searchStats.style.display = 'none';
+            }
+        }
+
+        // Initialize search functionality
+        function initializeSearch() {
+            const searchBox = document.getElementById('searchBox');
+            const clearSearch = document.getElementById('clearSearch');
+            
+            searchBox.addEventListener('input', debounce(handleSearch, 300));
+            searchBox.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearch();
+                }
+            });
+            
+            // Show/hide clear button
+            searchBox.addEventListener('input', () => {
+                clearSearch.style.display = searchBox.value ? 'block' : 'none';
+            });
+        }
+
+        // Handle search functionality
+        function handleSearch() {
+            const searchBox = document.getElementById('searchBox');
+            searchTerm = searchBox.value.toLowerCase().trim();
+            
+            applyFilters();
+            updateStats();
+            
+            localStorage.setItem('searchTerm', searchTerm);
+        }
+
+        // Clear search
+        function clearSearch() {
+            const searchBox = document.getElementById('searchBox');
+            searchBox.value = '';
+            searchTerm = '';
+            document.getElementById('clearSearch').style.display = 'none';
+            
+            applyFilters();
+            updateStats();
+            
+            localStorage.removeItem('searchTerm');
+            searchBox.focus();
+        }
+
+        // Apply all filters (search + category)
+        function applyFilters() {
+            filteredTools = allTools.filter(tool => {
+                // Category filter
+                let categoryMatch = true;
+                if (currentCategory !== 'all') {
+                    categoryMatch = tool.dataset.category && 
+                                   tool.dataset.category.toLowerCase() === currentCategory.toLowerCase();
+                }
+                
+                // Search filter
+                let searchMatch = true;
+                if (searchTerm) {
+                    const title = tool.querySelector('.tool-title').textContent.toLowerCase();
+                    const desc = tool.querySelector('.tool-desc').textContent.toLowerCase();
+                    const category = tool.dataset.category?.toLowerCase() || '';
+                    
+                    searchMatch = title.includes(searchTerm) || 
+                                 desc.includes(searchTerm) || 
+                                 category.includes(searchTerm);
+                }
+                
+                return categoryMatch && searchMatch;
+            });
+            
+            displayFilteredTools();
+        }
+
+        // Display filtered tools
+        function displayFilteredTools() {
+            const container = document.getElementById('toolsContainer');
+            const noResults = document.getElementById('noResults');
+            
+            // Hide all tools first
+            allTools.forEach(tool => {
+                tool.style.display = 'none';
+            });
+            
+            if (filteredTools.length === 0) {
+                noResults.style.display = 'block';
+                container.style.display = 'none';
+            } else {
+                noResults.style.display = 'none';
+                container.style.display = 'grid';
+                
+                // Show filtered tools with staggered animation
+                filteredTools.forEach((tool, index) => {
+                    tool.style.display = '';
+                    tool.style.animationDelay = `${index * 0.05}s`;
+                    tool.style.animation = 'none';
+                    
+                    // Trigger reflow and re-apply animation
+                    setTimeout(() => {
+                        tool.style.animation = 'slideInUp 0.5s ease forwards';
+                    }, index * 50);
+                });
+            }
+        }
+
+        // Initialize view toggle
+        function initializeViewToggle() {
+            const viewButtons = document.querySelectorAll('.view-btn');
+            
+            viewButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const view = btn.dataset.view;
+                    switchView(view);
+                    
+                    // Update button states
+                    viewButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    showNotification(`Switched to ${view} view`, 'info');
+                });
+            });
+        }
+
+        // Switch between grid and list view
+        function switchView(view) {
+            const container = document.getElementById('toolsContainer');
+            
+            container.classList.remove('grid-view', 'list-view');
+            container.classList.add(`${view}-view`);
+            
+            currentView = view;
+            localStorage.setItem('viewPreference', view);
+            
+            // Re-initialize sortable after view change
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
+            initializeSortable();
+        }
+
+        // Dark mode functionality
         function toggleDarkMode() {
             document.body.classList.toggle("dark");
             updateToggleIcon();
-            localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+            
+            const isDark = document.body.classList.contains("dark");
+            localStorage.setItem("darkMode", isDark);
+            
+            // Add transition effect
+            document.body.style.transition = 'all 0.4s ease';
+            setTimeout(() => {
+                document.body.style.transition = '';
+            }, 400);
+            
+            showNotification(`${isDark ? 'Dark' : 'Light'} mode activated`, 'info');
         }
 
         function updateToggleIcon() {
-            const btn = document.querySelector(".toggle-btn i");
+            const btn = document.querySelector("#darkModeBtn i");
             if (document.body.classList.contains("dark")) {
                 btn.classList.replace("fa-moon", "fa-sun");
             } else {
@@ -376,28 +1475,96 @@
             }
         }
 
-        // Show save notification
-        function showSaveNotification() {
-            const notification = document.getElementById('saveNotification');
-            notification.classList.add('show');
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 2000);
+        // Reset tool order
+        function resetToolOrder() {
+            if (confirm('Are you sure you want to reset the tool order to default?')) {
+                localStorage.removeItem('toolOrder');
+                
+                // Restore original order (alphabetical by title)
+                const container = document.getElementById('toolsContainer');
+                const originalOrder = Array.from(allTools).sort((a, b) => {
+                    const titleA = a.querySelector('.tool-title').textContent;
+                    const titleB = b.querySelector('.tool-title').textContent;
+                    return titleA.localeCompare(titleB);
+                });
+                
+                container.innerHTML = '';
+                originalOrder.forEach(tool => container.appendChild(tool));
+                
+                showNotification('Tool order reset to default', 'success');
+                
+                // Re-apply current filters
+                applyFilters();
+            }
         }
 
-        // Load preference on page load
-        window.onload = () => {
+        // Load user preferences
+        function loadPreferences() {
+            // Dark mode
             if (localStorage.getItem("darkMode") === "true") {
                 document.body.classList.add("dark");
             }
             updateToggleIcon();
 
-            // Initialize SortableJS for drag and drop
-            initSortable();
+            // View preference
+            const viewPreference = localStorage.getItem('viewPreference') || 'grid';
+            currentView = viewPreference;
             
-            // Apply saved order immediately
-            applySavedOrder();
+            const container = document.getElementById('toolsContainer');
+            container.classList.add(`${viewPreference}-view`);
+            
+            const viewBtn = document.querySelector(`[data-view="${viewPreference}"]`);
+            if (viewBtn) {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                viewBtn.classList.add('active');
+            }
+            
+            // Search term
+            const savedSearch = localStorage.getItem('searchTerm');
+            if (savedSearch) {
+                document.getElementById('searchBox').value = savedSearch;
+                searchTerm = savedSearch;
+                document.getElementById('clearSearch').style.display = 'block';
+            }
+            
+            // Category filter
+            const savedCategory = localStorage.getItem('selectedCategory');
+            if (savedCategory && savedCategory !== 'all') {
+                currentCategory = savedCategory;
+            }
+        }
+
+        // Initialize drag and drop functionality
+        function initializeSortable() {
+            const container = document.getElementById('toolsContainer');
+
+            sortableInstance = new Sortable(container, {
+                animation: 200,
+                ghostClass: 'dragging',
+                chosenClass: 'dragging',
+                dragClass: 'dragging',
+                disabled: false,
+                onStart: function(evt) {
+                    container.classList.add('sorting');
+                    evt.item.style.cursor = 'grabbing';
+                },
+                onEnd: function(evt) {
+                    container.classList.remove('sorting');
+                    evt.item.style.cursor = 'grab';
+                    saveToolOrder();
+                    showNotification('Tool order saved!', 'success');
+                }
+            });
+        }
+
+        // Save tool order to localStorage
+        function saveToolOrder() {
+            const container = document.getElementById('toolsContainer');
+            const order = Array.from(container.children)
+                .filter(child => child.classList.contains('tool-card'))
+                .map(child => child.getAttribute('data-id'));
+            
+            localStorage.setItem('toolOrder', JSON.stringify(order));
         }
 
         // Apply saved order from localStorage
@@ -406,51 +1573,283 @@
             const savedOrder = localStorage.getItem('toolOrder');
             
             if (savedOrder) {
-                const order = JSON.parse(savedOrder);
-                
-                // Create a temporary container to hold our elements while we sort
-                const fragment = document.createDocumentFragment();
-                
-                // Reorder elements based on saved order
-                order.forEach(id => {
-                    const element = document.querySelector(`[data-id="${id}"]`);
-                    if (element) {
-                        fragment.appendChild(element);
-                    }
-                });
-                
-                // Add any elements that weren't in the saved order (newly added tools)
-                Array.from(container.children).forEach(child => {
-                    if (!order.includes(child.getAttribute('data-id'))) {
-                        fragment.appendChild(child);
-                    }
-                });
-                
-                // Replace the container's children with the sorted fragment
-                container.innerHTML = '';
-                container.appendChild(fragment);
+                try {
+                    const order = JSON.parse(savedOrder);
+                    const fragment = document.createDocumentFragment();
+                    
+                    // Reorder elements based on saved order
+                    order.forEach(id => {
+                        const element = document.querySelector(`[data-id="${id}"]`);
+                        if (element) {
+                            fragment.appendChild(element);
+                        }
+                    });
+                    
+                    // Add any elements that weren't in the saved order
+                    Array.from(container.children).forEach(child => {
+                        if (child.classList.contains('tool-card') && 
+                            !order.includes(child.getAttribute('data-id'))) {
+                            fragment.appendChild(child);
+                        }
+                    });
+                    
+                    // Replace the container's children with the sorted fragment
+                    container.innerHTML = '';
+                    container.appendChild(fragment);
+                } catch (error) {
+                    console.error('Error applying saved order:', error);
+                }
             }
         }
 
-        // Initialize SortableJS for drag and drop functionality
-        function initSortable() {
-            const container = document.getElementById('toolsContainer');
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            const icon = notification.querySelector('i');
+            
+            // Set message and type
+            notificationText.textContent = message;
+            notification.className = `notification ${type}`;
+            
+            // Set appropriate icon
+            icon.className = type === 'success' ? 'fas fa-check-circle' :
+                           type === 'error' ? 'fas fa-exclamation-triangle' :
+                           'fas fa-info-circle';
+            
+            // Show notification
+            notification.classList.add('show');
+            
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
 
-            // Initialize SortableJS
-            const sortable = new Sortable(container, {
-                animation: 150,
-                ghostClass: 'dragging',
-                onEnd: function() {
-                    // Save the new order to localStorage
-                    const order = Array.from(container.children).map(child => child.getAttribute('data-id'));
-                    localStorage.setItem('toolOrder', JSON.stringify(order));
+        // Update scroll indicator
+        function updateScrollIndicator() {
+            const indicator = document.getElementById('scrollIndicator');
+            const windowHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrolled = window.scrollY;
+            const progress = windowHeight > 0 ? (scrolled / windowHeight) * 100 : 0;
+            
+            indicator.style.transform = `scaleX(${Math.min(progress, 100) / 100})`;
+        }
+
+        // Handle window resize
+        function handleResize() {
+            updateScrollIndicator();
+            
+            // Close any open dropdowns on resize
+            document.getElementById('filterMenu').classList.remove('show');
+        }
+
+        // Initialize keyboard shortcuts
+        function initializeKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ctrl/Cmd + K to focus search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('searchBox').focus();
+                    showNotification('Search focused (Ctrl+K)', 'info');
+                }
+                
+                // Ctrl/Cmd + D to toggle dark mode
+                if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                    e.preventDefault();
+                    toggleDarkMode();
+                }
+                
+                // Escape to clear search or close dropdowns
+                if (e.key === 'Escape') {
+                    const searchBox = document.getElementById('searchBox');
+                    const filterMenu = document.getElementById('filterMenu');
                     
-                    // Show save notification
-                    showSaveNotification();
+                    if (filterMenu.classList.contains('show')) {
+                        filterMenu.classList.remove('show');
+                    } else if (searchBox.value) {
+                        clearSearch();
+                    }
+                }
+                
+                // Ctrl/Cmd + R to reset tool order
+                if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                    e.preventDefault();
+                    resetToolOrder();
                 }
             });
         }
-    </script>
-</body>
 
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        // Handle page visibility change (pause animations when tab is not active)
+        document.addEventListener('visibilitychange', () => {
+            const floatingElements = document.querySelectorAll('.floating-circle');
+            floatingElements.forEach(element => {
+                if (document.hidden) {
+                    element.style.animationPlayState = 'paused';
+                } else {
+                    element.style.animationPlayState = 'running';
+                }
+            });
+        });
+
+        // Service Worker registration for offline functionality (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+
+    <style>
+        /* Additional responsive improvements */
+        @media (max-width: 320px) {
+            .header-title {
+                font-size: 0.9em;
+            }
+            
+            .search-box {
+                width: 180px;
+                font-size: 13px;
+            }
+            
+            .search-box:focus {
+                width: 200px;
+            }
+            
+            .tool-card {
+                padding: 15px;
+                margin: 10px 0;
+            }
+            
+            .tool-title {
+                font-size: 1.1em;
+            }
+            
+            .tool-desc {
+                font-size: 0.9em;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --border-color: #000;
+                --shadow-light: rgba(0, 0, 0, 0.5);
+                --shadow-dark: rgba(0, 0, 0, 0.8);
+            }
+            
+            body.dark {
+                --border-color: #fff;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            .floating-circle {
+                animation: none;
+            }
+            
+            .tool-card {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            header, .stats-bar, .notification, .floating-elements, .scroll-indicator {
+                display: none !important;
+            }
+            
+            .tool-card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #000;
+                margin-bottom: 10px;
+            }
+            
+            .tool-card:hover {
+                transform: none;
+            }
+            
+            .container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+        }
+
+        /* Focus indicators for better accessibility */
+        .search-box:focus,
+        .view-btn:focus,
+        .toggle-btn:focus,
+        .reset-btn:focus,
+        .filter-btn:focus {
+            outline: 2px solid var(--icon-color);
+            outline-offset: 2px;
+        }
+
+        .tool-card:focus {
+            outline: 3px solid var(--icon-color);
+            outline-offset: 2px;
+        }
+
+        /* Loading state */
+        .loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--icon-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Improved tooltip styles for better UX */
+        .tool-card[title]:hover::before {
+            content: attr(title);
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card-bg);
+            color: var(--card-text);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            box-shadow: 0 2px 10px var(--shadow-dark);
+            z-index: 1000;
+        }
+    </style>
+</body>
 </html>
