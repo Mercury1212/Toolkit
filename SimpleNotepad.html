@@ -645,80 +645,63 @@
     }
 
     async function saveNoteToFile() {
-      currentNote.content = currentNote.isEncrypted ? currentNote.content : editor.value;
+    currentNote.content = currentNote.isEncrypted ? currentNote.content : editor.value;
+    
+    try {
+      let fileHandle;
       
-      try {
-        let fileHandle;
-        
-        // If we already have a file handle, use it
-        if (currentNote.fileHandle) {
-          fileHandle = currentNote.fileHandle;
-        } else {
-          // Otherwise, show the file picker
-          try {
-            fileHandle = await window.showSaveFilePicker({
-              suggestedName: getSuggestedFilename(),
-              types: [{
-                description: 'Text Files',
-                accept: {
-                  'text/plain': ['.txt'],
-                  'application/securenote': ['.securenote']
-                }
-              }]
-            });
-          } catch (err) {
-            // User cancelled the save dialog
-            if (err.name !== 'AbortError') {
-              console.error('Error saving file:', err);
-              setStatus('Error saving file: ' + err.message);
-            }
-            return;
-          }
-        }
-        
-        // Create a writer
-        const writable = await fileHandle.createWritable();
-        
-        // Write the content
-        await writable.write(currentNote.content);
-        await writable.close();
-        
-        // Remember the file handle for future saves
-        currentNote.fileHandle = fileHandle;
-        
-        setStatus('Note saved to ' + fileHandle.name);
-      } catch (err) {
-        console.error('Error saving file:', err);
-        setStatus('Error saving file: ' + err.message);
-        
-        // Fallback to download if File System Access API is not available
-        if (err.name === 'TypeError') {
-          fallbackSave();
-        }
-      }
-    }
-
-    function fallbackSave() {
-      // Create a blob with the content
-      const blob = new Blob([currentNote.content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      
-      // Create a download link
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = getSuggestedFilename();
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      setStatus('Note downloaded as ' + a.download);
-    }
-
-    function getSuggestedFilename() {
       if (currentNote.fileHandle) {
-        return currentNote.fileHandle.name;
+        fileHandle = currentNote.fileHandle;
+      } else {
+        try {
+          // Try modern File System Access API
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: getSuggestedFilename(),
+            types: [{
+              description: 'Text Files',
+              accept: { 'text/plain': ['.txt'] }
+            }]
+          });
+        } catch (err) {
+          if (err.name === 'AbortError') return; // user cancelled
+          console.warn("Falling back to download method:", err);
+          fallbackSave();
+          return;
+        }
       }
+      
+      const writable = await fileHandle.createWritable();
+      await writable.write(currentNote.content);
+      await writable.close();
+      currentNote.fileHandle = fileHandle;
+      setStatus('Note saved to ' + fileHandle.name);
+    } catch (err) {
+      console.error('Error saving file:', err);
+      setStatus('Error saving file: ' + err.message);
+      fallbackSave();
+    }
+  }
+
+  function fallbackSave() {
+    const blob = new Blob([currentNote.content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = getSuggestedFilename();
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setStatus('Note downloaded as ' + a.download);
+  }
+
+  function getSuggestedFilename() {
+    if (currentNote.fileHandle) return currentNote.fileHandle.name;
+    const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 50);
+    const baseName = (firstLine || 'secure_note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    // Always save as .txt (even if encrypted)
+    return `${baseName}.txt`;
+  }
       
       const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 50);
       const baseName = (firstLine || 'secure_note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
