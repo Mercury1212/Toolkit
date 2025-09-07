@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tools Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
         :root {
             --bg-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -57,6 +57,12 @@
             min-height: 100vh;
             position: relative;
             overflow-x: hidden;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         body::before {
@@ -115,8 +121,15 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+            }
         }
 
         header {
@@ -330,12 +343,46 @@
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
             color: var(--card-text);
-            cursor: grab;
             position: relative;
             overflow: hidden;
             opacity: 0;
             transform: translateY(30px);
             animation: slideInUp 0.5s ease forwards;
+            /* Mobile-friendly touch optimizations */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+
+        /* Mobile drag handle - only visible when edit mode is enabled */
+        .drag-handle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 30px;
+            height: 30px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: var(--icon-color);
+            color: white;
+            border-radius: 50%;
+            cursor: grab;
+            font-size: 14px;
+            z-index: 10;
+            opacity: 0.8;
+        }
+
+        .edit-mode .drag-handle {
+            display: flex;
+        }
+
+        .edit-mode .tool-card {
+            cursor: default;
+        }
+
+        .edit-mode .tool-card:hover {
+            transform: translateY(-5px) scale(1.01);
         }
 
         .tool-card::before {
@@ -437,12 +484,43 @@
             transform: translateY(0);
         }
 
+        .edit-mode .tool-category {
+            opacity: 1;
+            transform: translateY(0);
+            top: 45px;
+        }
+
         /* Dragging state */
         .dragging {
             opacity: 0.7;
             transform: rotate(5deg) scale(1.05);
             z-index: 1000;
             cursor: grabbing;
+        }
+
+        /* Edit mode toggle button */
+        .edit-toggle {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .edit-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+        }
+
+        .edit-toggle.active {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.3);
         }
 
         /* Save notification */
@@ -538,6 +616,46 @@
                 flex-direction: column;
                 gap: 10px;
             }
+
+            /* Mobile-specific improvements */
+            .tool-card {
+                padding: 25px 20px;
+                min-height: 140px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .tool-icon {
+                font-size: 40px;
+                margin-bottom: 15px;
+            }
+
+            .tool-title {
+                font-size: 1.2em;
+            }
+
+            .tool-desc {
+                font-size: 0.9em;
+            }
+
+            /* Better touch targets */
+            .view-btn,
+            .toggle-btn {
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            /* Mobile edit mode */
+            .edit-mode .tool-card:not(.dragging) {
+                cursor: pointer;
+            }
+
+            .drag-handle {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -552,6 +670,24 @@
 
             .tool-card {
                 padding: 20px;
+                min-height: 120px;
+            }
+
+            .search-box {
+                width: 280px;
+                max-width: 90vw;
+            }
+
+            .search-box:focus {
+                width: 300px;
+                max-width: 95vw;
+            }
+
+            .notification {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: calc(100vw - 40px);
             }
         }
 
@@ -561,6 +697,7 @@
                 opacity: 0;
                 transform: translateY(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -663,12 +800,60 @@
             opacity: 0.7;
             margin-left: auto;
         }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --border-color: #000;
+                --shadow-light: rgba(0, 0, 0, 0.5);
+                --shadow-dark: rgba(0, 0, 0, 0.8);
+            }
+
+            body.dark {
+                --border-color: #fff;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .floating-circle {
+                animation: none;
+            }
+
+            .tool-card {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* Focus indicators for better accessibility */
+        .search-box:focus,
+        .view-btn:focus,
+        .toggle-btn:focus,
+        .reset-btn:focus,
+        .filter-btn:focus,
+        .edit-toggle:focus {
+            outline: 2px solid var(--icon-color);
+            outline-offset: 2px;
+        }
+
+        .tool-card:focus {
+            outline: 3px solid var(--icon-color);
+            outline-offset: 2px;
+        }
     </style>
 </head>
 
 <body>
     <div class="scroll-indicator" id="scrollIndicator"></div>
-    
+
     <div class="floating-elements">
         <div class="floating-circle"></div>
         <div class="floating-circle"></div>
@@ -680,14 +865,14 @@
             <div class="header-title">
                 🚀 My Tools Hub
             </div>
-            
+
             <div class="header-controls">
                 <div class="search-container">
                     <input type="text" class="search-box" placeholder="Search tools..." id="searchBox">
                     <i class="fas fa-times clear-search" id="clearSearch"></i>
                     <i class="fas fa-search search-icon"></i>
                 </div>
-                
+
                 <div class="filter-dropdown">
                     <button class="filter-btn" id="filterBtn">
                         <i class="fas fa-filter"></i>
@@ -702,7 +887,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="view-toggle">
                     <button class="view-btn active" data-view="grid" title="Grid View">
                         <i class="fas fa-th"></i>
@@ -711,11 +896,16 @@
                         <i class="fas fa-list"></i>
                     </button>
                 </div>
-                
+
                 <button class="toggle-btn" id="darkModeBtn" title="Toggle Dark Mode (Ctrl+D)">
                     <i class="fas fa-moon"></i>
                 </button>
-                
+
+                <button class="edit-toggle" id="editToggle" title="Toggle Edit Mode">
+                    <i class="fas fa-edit"></i>
+                    <span>Edit</span>
+                </button>
+
                 <button class="reset-btn" id="resetBtn" title="Reset Tool Order">
                     <i class="fas fa-undo"></i>
                     <span>Reset</span>
@@ -744,17 +934,18 @@
     </div>
 
     <div class="container grid-view" id="toolsContainer">
-        <!-- Tool cards with categories -->
+        <!-- Tool cards with categories and drag handles -->
         <a href="https://www.facebook.com/" target="_blank" class="tool-card" data-id="facebook" data-category="Social">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#1877f2;"><i class="fab fa-facebook"></i></div>
             <div class="tool-content">
                 <div class="tool-title">Facebook</div>
-                <div class="tool-desc">Connect with friends and family worldwide</div>
+                <div class="tool-desc">Chat with Facebook friends and contacts</div>
             </div>
         </a>
 
-        <a href="https://www.messenger.com/" target="_blank" class="tool-card" data-id="messenger" data-category="Social">
+<a href="https://www.messenger.com/" target="_blank" class="tool-card" data-id="messenger" data-category="Social">
             <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#00b2ff;"><i class="fab fa-facebook-messenger"></i></div>
             <div class="tool-content">
@@ -764,6 +955,7 @@
         </a>
 
         <a href="https://www.instagram.com/" target="_blank" class="tool-card" data-id="instagram" data-category="Social">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#e1306c;"><i class="fab fa-instagram"></i></div>
             <div class="tool-content">
@@ -773,6 +965,7 @@
         </a>
 
         <a href="https://www.tiktok.com/" target="_blank" class="tool-card" data-id="tiktok" data-category="Social">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#000000;"><i class="fab fa-tiktok"></i></div>
             <div class="tool-content">
@@ -782,6 +975,7 @@
         </a>
 
         <a href="https://twitter.com/" target="_blank" class="tool-card" data-id="twitter" data-category="Social">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#1da1f2;"><i class="fab fa-twitter"></i></div>
             <div class="tool-content">
@@ -791,6 +985,7 @@
         </a>
 
         <a href="https://www.youtube.com/" target="_blank" class="tool-card" data-id="youtube" data-category="Entertainment">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Entertainment</div>
             <div class="tool-icon" style="color:#ff0000;"><i class="fab fa-youtube"></i></div>
             <div class="tool-content">
@@ -800,6 +995,7 @@
         </a>
 
         <a href="https://www.netflix.com/" target="_blank" class="tool-card" data-id="netflix" data-category="Entertainment">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Entertainment</div>
             <div class="tool-icon" style="color:#e50914;"><i class="fas fa-film"></i></div>
             <div class="tool-content">
@@ -809,6 +1005,7 @@
         </a>
 
         <a href="https://github.com/" target="_blank" class="tool-card" data-id="github" data-category="Development">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Development</div>
             <div class="tool-icon" style="color:#333;"><i class="fab fa-github"></i></div>
             <div class="tool-content">
@@ -818,6 +1015,7 @@
         </a>
 
         <a href="https://www.google.com/" target="_blank" class="tool-card" data-id="google" data-category="Search">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Search</div>
             <div class="tool-icon" style="color:#4285f4;"><i class="fab fa-google"></i></div>
             <div class="tool-content">
@@ -827,6 +1025,7 @@
         </a>
 
         <a href="https://mail.google.com/" target="_blank" class="tool-card" data-id="gmail" data-category="Productivity">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Productivity</div>
             <div class="tool-icon" style="color:#ea4335;"><i class="fas fa-envelope"></i></div>
             <div class="tool-content">
@@ -836,6 +1035,7 @@
         </a>
 
         <a href="https://drive.google.com/" target="_blank" class="tool-card" data-id="drive" data-category="Cloud Storage">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Cloud Storage</div>
             <div class="tool-icon" style="color:#34a853;"><i class="fab fa-google-drive"></i></div>
             <div class="tool-content">
@@ -845,6 +1045,7 @@
         </a>
 
         <a href="https://www.terabox.com/" target="_blank" class="tool-card" data-id="terabox" data-category="Cloud Storage">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Cloud Storage</div>
             <div class="tool-icon" style="color:#0066ff;"><i class="fas fa-cloud"></i></div>
             <div class="tool-content">
@@ -854,6 +1055,7 @@
         </a>
 
         <a href="https://www.linkedin.com/" target="_blank" class="tool-card" data-id="linkedin" data-category="Social">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Social</div>
             <div class="tool-icon" style="color:#0a66c2;"><i class="fab fa-linkedin"></i></div>
             <div class="tool-content">
@@ -863,6 +1065,7 @@
         </a>
 
         <a href="https://shopee.ph/" target="_blank" class="tool-card" data-id="shopee" data-category="Shopping">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Shopping</div>
             <div class="tool-icon" style="color:#ee4d2d;"><i class="fas fa-shopping-bag"></i></div>
             <div class="tool-content">
@@ -872,6 +1075,7 @@
         </a>
 
         <a href="https://www.lazada.com.ph/" target="_blank" class="tool-card" data-id="lazada" data-category="Shopping">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Shopping</div>
             <div class="tool-icon" style="color:#1a9fff;"><i class="fas fa-store"></i></div>
             <div class="tool-content">
@@ -881,6 +1085,7 @@
         </a>
 
         <a href="https://app.grass.io/dashboard" target="_blank" class="tool-card" data-id="grass" data-category="Crypto">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Crypto</div>
             <div class="tool-icon" style="color:#28a745;"><i class="fas fa-leaf"></i></div>
             <div class="tool-content">
@@ -890,6 +1095,7 @@
         </a>
 
         <a href="https://chat.deepseek.com/" target="_blank" class="tool-card" data-id="deepseek" data-category="AI">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">AI</div>
             <div class="tool-icon" style="color:#6c63ff;"><i class="fas fa-brain"></i></div>
             <div class="tool-content">
@@ -899,6 +1105,7 @@
         </a>
 
         <a href="https://chatgpt.com/" target="_blank" class="tool-card" data-id="chatgpt" data-category="AI">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">AI</div>
             <div class="tool-icon" style="color:#10a37f;"><i class="fas fa-robot"></i></div>
             <div class="tool-content">
@@ -908,6 +1115,7 @@
         </a>
 
         <a href="https://terabox.hnn.workers.dev/" target="_blank" class="tool-card" data-id="terabox-proxy" data-category="Cloud Storage">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Cloud Storage</div>
             <div class="tool-icon" style="color:#0066ff;"><i class="fas fa-cloud"></i></div>
             <div class="tool-content">
@@ -917,6 +1125,7 @@
         </a>
 
         <a href="https://smartthingsfind.samsung.com/" target="_blank" class="tool-card" data-id="samsung-find" data-category="Utilities">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Utilities</div>
             <div class="tool-icon" style="color:#1428a0;"><i class="fas fa-map-marker-alt"></i></div>
             <div class="tool-content">
@@ -926,6 +1135,7 @@
         </a>
 
         <a href="https://music.youtube.com/" target="_blank" class="tool-card" data-id="youtube-music" data-category="Entertainment">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Entertainment</div>
             <div class="tool-icon" style="color:#ff0000;"><i class="fas fa-music"></i></div>
             <div class="tool-content">
@@ -933,8 +1143,9 @@
                 <div class="tool-desc">Stream and discover music from YouTube</div>
             </div>
         </a>
-        
+
         <a href="https://login.tailscale.com/admin/machines" target="_blank" class="tool-card" data-id="tailscale" data-category="Networking">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Networking</div>
             <div class="tool-icon" style="color:#2b6cb0;"><i class="fas fa-laptop-code"></i></div>
             <div class="tool-content">
@@ -944,6 +1155,7 @@
         </a>
 
         <a href="https://dash.cloudflare.com/" target="_blank" class="tool-card" data-id="cloudflare" data-category="Networking">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Networking</div>
             <div class="tool-icon" style="color:#f38020;"><i class="fas fa-cloud"></i></div>
             <div class="tool-content">
@@ -953,6 +1165,7 @@
         </a>
 
         <a href="PasswordManager.html" target="_blank" class="tool-card" data-id="password-manager" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
             <div class="tool-content">
@@ -962,6 +1175,7 @@
         </a>
 
         <a href="WebAuthenticator.html" target="_blank" class="tool-card" data-id="authenticator" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#2ecc71;"><i class="fas fa-mobile-alt"></i></div>
             <div class="tool-content">
@@ -971,6 +1185,7 @@
         </a>
 
         <a href="TextEncryptor.html" target="_blank" class="tool-card" data-id="text-encryptor" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#f39c12;"><i class="fas fa-key"></i></div>
             <div class="tool-content">
@@ -980,6 +1195,7 @@
         </a>
 
         <a href="SecurityToolkit.html" target="_blank" class="tool-card" data-id="security-toolkit" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#9b59b6;"><i class="fas fa-toolbox"></i></div>
             <div class="tool-content">
@@ -989,6 +1205,7 @@
         </a>
 
         <a href="SimpleNotepad.html" target="_blank" class="tool-card" data-id="notepad" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#1abc9c;"><i class="fas fa-sticky-note"></i></div>
             <div class="tool-content">
@@ -998,6 +1215,7 @@
         </a>
 
         <a href="SecureNotepad.html" target="_blank" class="tool-card" data-id="secure-notepad" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#3498db;"><i class="fas fa-sticky-note"></i></div>
             <div class="tool-content">
@@ -1007,6 +1225,7 @@
         </a>
 
         <a href="Scrambler.html" target="_blank" class="tool-card" data-id="scrambler" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#e67e22;"><i class="fas fa-random"></i></div>
             <div class="tool-content">
@@ -1016,6 +1235,7 @@
         </a>
 
         <a href="FileLocker.html" target="_blank" class="tool-card" data-id="file-locker" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#f39c12;"><i class="fa-solid fa-file-shield"></i></div>
             <div class="tool-content">
@@ -1025,6 +1245,7 @@
         </a>
 
         <a href="PowerCalculator.html" target="_blank" class="tool-card" data-id="power-calculator" data-category="Utilities">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Utilities</div>
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-bolt"></i></div>
             <div class="tool-content">
@@ -1034,6 +1255,7 @@
         </a>
 
         <a href="QRTools.html" target="_blank" class="tool-card" data-id="qrcode-reader" data-category="Utilities">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Utilities</div>
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
             <div class="tool-content">
@@ -1043,6 +1265,7 @@
         </a>
 
         <a href="https://scanqr.org/qr-code-generator/" target="_blank" class="tool-card" data-id="qrcode-generator" data-category="Utilities">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Utilities</div>
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
             <div class="tool-content">
@@ -1052,6 +1275,7 @@
         </a>
 
         <a href="https://app.keeweb.info/" target="_blank" class="tool-card" data-id="keeweb" data-category="Security">
+            <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
             <div class="tool-category">Security</div>
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
             <div class="tool-content">
@@ -1081,6 +1305,9 @@
         let searchTerm = '';
         let categories = new Set();
         let sortableInstance = null;
+        let isEditMode = false;
+        let touchStartTime = 0;
+        let touchMoved = false;
 
         // Category icons mapping
         const categoryIcons = {
@@ -1127,22 +1354,23 @@
                 initializeSearch();
                 initializeViewToggle();
                 initializeFilterDropdown();
-                initializeSortable();
+                initializeEditMode();
+                initializeMobileTouchHandling();
                 applySavedOrder();
                 updateScrollIndicator();
                 initializeKeyboardShortcuts();
                 addEventListeners();
-                
+
                 // Apply saved filters after initialization
                 if (currentCategory !== 'all') {
                     filterByCategory(currentCategory);
                 }
-                
+
                 if (searchTerm) {
                     applyFilters();
                     updateStats();
                 }
-                
+
                 // Show initial animation
                 setTimeout(() => {
                     document.querySelectorAll('.tool-card').forEach((card, index) => {
@@ -1161,12 +1389,12 @@
             // Window events
             window.addEventListener('scroll', debounce(updateScrollIndicator, 10));
             window.addEventListener('resize', debounce(handleResize, 250));
-            
+
             // Click outside to close dropdowns
             document.addEventListener('click', (e) => {
                 const filterMenu = document.getElementById('filterMenu');
                 const filterBtn = document.getElementById('filterBtn');
-                
+
                 if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
                     filterMenu.classList.remove('show');
                 }
@@ -1174,19 +1402,152 @@
 
             // Dark mode button
             document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
-            
+
             // Reset button
             document.getElementById('resetBtn').addEventListener('click', resetToolOrder);
-            
+
             // Clear search button
             document.getElementById('clearSearch').addEventListener('click', clearSearch);
+
+            // Edit toggle button
+            document.getElementById('editToggle').addEventListener('click', toggleEditMode);
+        }
+
+        // Initialize mobile touch handling
+        function initializeMobileTouchHandling() {
+            const container = document.getElementById('toolsContainer');
+
+            // Add touch event listeners to all tool cards
+            document.querySelectorAll('.tool-card').forEach(card => {
+                setupTouchEvents(card);
+            });
+        }
+
+        // Setup touch events for individual cards
+        function setupTouchEvents(card) {
+            let touchStartX, touchStartY, touchStartTime;
+            let hasMoved = false;
+
+            card.addEventListener('touchstart', (e) => {
+                if (isEditMode) {
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    touchStartTime = Date.now();
+                    hasMoved = false;
+                }
+            }, {
+                passive: true
+            });
+
+            card.addEventListener('touchmove', (e) => {
+                if (isEditMode) {
+                    const touch = e.touches[0];
+                    const deltaX = Math.abs(touch.clientX - touchStartX);
+                    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+                    if (deltaX > 10 || deltaY > 10) {
+                        hasMoved = true;
+                    }
+                }
+            }, {
+                passive: true
+            });
+
+            card.addEventListener('touchend', (e) => {
+                if (isEditMode) {
+                    const touchDuration = Date.now() - touchStartTime;
+
+                    // If it's a quick tap (not a drag), don't prevent the click
+                    if (!hasMoved && touchDuration < 200) {
+                        // Allow the click to proceed
+                        return;
+                    }
+
+                    // If it was a drag, prevent the click
+                    if (hasMoved) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            });
+
+            // Handle click events
+            card.addEventListener('click', (e) => {
+                if (isEditMode) {
+                    // In edit mode, prevent navigation by default
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Only navigate if this wasn't a drag operation
+                    const dragHandle = card.querySelector('.drag-handle');
+                    if (!hasMoved && !e.target.closest('.drag-handle')) {
+                        // Open link in new tab
+                        window.open(card.href, '_blank');
+                    }
+                }
+                // In normal mode, let the link work naturally
+            });
+        }
+
+        // Initialize edit mode functionality
+        function initializeEditMode() {
+            isEditMode = localStorage.getItem('editMode') === 'true';
+            updateEditModeUI();
+        }
+
+        // Toggle edit mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            updateEditModeUI();
+            localStorage.setItem('editMode', isEditMode);
+
+            if (isEditMode) {
+                initializeSortable();
+                showNotification('Edit mode enabled - drag to reorder, tap to open', 'info');
+            } else {
+                if (sortableInstance) {
+                    sortableInstance.destroy();
+                    sortableInstance = null;
+                }
+                showNotification('Edit mode disabled - normal navigation restored', 'info');
+            }
+        }
+
+        // Update edit mode UI
+        function updateEditModeUI() {
+            const container = document.getElementById('toolsContainer');
+            const editToggle = document.getElementById('editToggle');
+            const editIcon = editToggle.querySelector('i');
+            const editText = editToggle.querySelector('span');
+
+            if (isEditMode) {
+                container.classList.add('edit-mode');
+                editToggle.classList.add('active');
+                editIcon.className = 'fas fa-check';
+                editText.textContent = 'Done';
+
+                // Initialize sortable when entering edit mode
+                initializeSortable();
+            } else {
+                container.classList.remove('edit-mode');
+                editToggle.classList.remove('active');
+                editIcon.className = 'fas fa-edit';
+                editText.textContent = 'Edit';
+
+                // Destroy sortable when leaving edit mode
+                if (sortableInstance) {
+                    sortableInstance.destroy();
+                    sortableInstance = null;
+                }
+            }
         }
 
         // Collect all tools from the DOM
         function collectAllTools() {
             allTools = Array.from(document.querySelectorAll('.tool-card'));
             filteredTools = [...allTools];
-            
+
             // Collect unique categories
             allTools.forEach(tool => {
                 const category = tool.dataset.category;
@@ -1200,35 +1561,35 @@
         function buildCategoryFilter() {
             const filterMenu = document.getElementById('filterMenu');
             const allItem = filterMenu.querySelector('[data-category="all"]');
-            
+
             // Clear existing items except "All"
             const existingItems = filterMenu.querySelectorAll('.filter-item:not([data-category="all"])');
             existingItems.forEach(item => item.remove());
-            
+
             // Add event listener to "All Categories" item
             if (allItem) {
                 allItem.addEventListener('click', () => filterByCategory('all'));
             }
-            
+
             // Add category items
             Array.from(categories).sort().forEach(category => {
                 const item = document.createElement('div');
                 item.className = 'filter-item';
                 item.dataset.category = category.toLowerCase().replace(/\s+/g, '-');
-                
+
                 const icon = categoryIcons[category] || 'fas fa-folder';
                 const count = allTools.filter(tool => tool.dataset.category === category).length;
-                
+
                 item.innerHTML = `
                     <i class="${icon}"></i>
                     <span>${category}</span>
                     <span class="filter-count">${count}</span>
                 `;
-                
+
                 item.addEventListener('click', () => filterByCategory(category));
                 filterMenu.appendChild(item);
             });
-            
+
             // Update "All" count
             document.getElementById('count-all').textContent = allTools.length;
         }
@@ -1237,7 +1598,7 @@
         function initializeFilterDropdown() {
             const filterBtn = document.getElementById('filterBtn');
             const filterMenu = document.getElementById('filterMenu');
-            
+
             filterBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 filterMenu.classList.toggle('show');
@@ -1247,13 +1608,13 @@
         // Filter by category
         function filterByCategory(category) {
             currentCategory = category === 'all' ? 'all' : category.toLowerCase();
-            
+
             // Update UI
             const filterText = document.getElementById('filterText');
             const filterItems = document.querySelectorAll('.filter-item');
-            
+
             filterItems.forEach(item => item.classList.remove('active'));
-            
+
             if (category === 'all') {
                 filterText.textContent = 'All Categories';
                 document.querySelector('[data-category="all"]').classList.add('active');
@@ -1263,14 +1624,14 @@
                 const targetItem = document.querySelector(`[data-category="${targetDataCategory}"]`);
                 if (targetItem) targetItem.classList.add('active');
             }
-            
+
             // Close dropdown
             document.getElementById('filterMenu').classList.remove('show');
-            
+
             // Apply filter
             applyFilters();
             updateFilterStats();
-            
+
             localStorage.setItem('selectedCategory', currentCategory);
         }
 
@@ -1278,13 +1639,13 @@
         function updateFilterStats() {
             const filterStats = document.getElementById('filterStats');
             const currentFilterSpan = document.getElementById('currentFilter');
-            
+
             if (currentCategory === 'all') {
                 filterStats.style.display = 'none';
             } else {
                 filterStats.style.display = 'flex';
                 // Find the original category name
-                const originalCategory = Array.from(categories).find(cat => 
+                const originalCategory = Array.from(categories).find(cat =>
                     cat.toLowerCase() === currentCategory.toLowerCase()
                 );
                 currentFilterSpan.textContent = originalCategory || currentCategory;
@@ -1295,14 +1656,14 @@
         function updateStats() {
             const toolCount = document.getElementById('toolCount');
             const visibleCount = document.getElementById('visibleCount');
-            
+
             toolCount.textContent = allTools.length;
             visibleCount.textContent = filteredTools.length;
-            
+
             // Update search stats
             const searchStats = document.getElementById('searchStats');
             const currentSearch = document.getElementById('currentSearch');
-            
+
             if (searchTerm) {
                 searchStats.style.display = 'flex';
                 currentSearch.textContent = searchTerm;
@@ -1315,7 +1676,7 @@
         function initializeSearch() {
             const searchBox = document.getElementById('searchBox');
             const clearSearch = document.getElementById('clearSearch');
-            
+
             searchBox.addEventListener('input', debounce(handleSearch, 300));
             searchBox.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -1323,7 +1684,7 @@
                     handleSearch();
                 }
             });
-            
+
             // Show/hide clear button
             searchBox.addEventListener('input', () => {
                 clearSearch.style.display = searchBox.value ? 'block' : 'none';
@@ -1334,10 +1695,10 @@
         function handleSearch() {
             const searchBox = document.getElementById('searchBox');
             searchTerm = searchBox.value.toLowerCase().trim();
-            
+
             applyFilters();
             updateStats();
-            
+
             localStorage.setItem('searchTerm', searchTerm);
         }
 
@@ -1347,10 +1708,10 @@
             searchBox.value = '';
             searchTerm = '';
             document.getElementById('clearSearch').style.display = 'none';
-            
+
             applyFilters();
             updateStats();
-            
+
             localStorage.removeItem('searchTerm');
             searchBox.focus();
         }
@@ -1361,25 +1722,25 @@
                 // Category filter
                 let categoryMatch = true;
                 if (currentCategory !== 'all') {
-                    categoryMatch = tool.dataset.category && 
-                                   tool.dataset.category.toLowerCase() === currentCategory.toLowerCase();
+                    categoryMatch = tool.dataset.category &&
+                        tool.dataset.category.toLowerCase() === currentCategory.toLowerCase();
                 }
-                
+
                 // Search filter
                 let searchMatch = true;
                 if (searchTerm) {
                     const title = tool.querySelector('.tool-title').textContent.toLowerCase();
                     const desc = tool.querySelector('.tool-desc').textContent.toLowerCase();
                     const category = tool.dataset.category?.toLowerCase() || '';
-                    
-                    searchMatch = title.includes(searchTerm) || 
-                                 desc.includes(searchTerm) || 
-                                 category.includes(searchTerm);
+
+                    searchMatch = title.includes(searchTerm) ||
+                        desc.includes(searchTerm) ||
+                        category.includes(searchTerm);
                 }
-                
+
                 return categoryMatch && searchMatch;
             });
-            
+
             displayFilteredTools();
         }
 
@@ -1387,25 +1748,25 @@
         function displayFilteredTools() {
             const container = document.getElementById('toolsContainer');
             const noResults = document.getElementById('noResults');
-            
+
             // Hide all tools first
             allTools.forEach(tool => {
                 tool.style.display = 'none';
             });
-            
+
             if (filteredTools.length === 0) {
                 noResults.style.display = 'block';
                 container.style.display = 'none';
             } else {
                 noResults.style.display = 'none';
                 container.style.display = 'grid';
-                
+
                 // Show filtered tools with staggered animation
                 filteredTools.forEach((tool, index) => {
                     tool.style.display = '';
                     tool.style.animationDelay = `${index * 0.05}s`;
                     tool.style.animation = 'none';
-                    
+
                     // Trigger reflow and re-apply animation
                     setTimeout(() => {
                         tool.style.animation = 'slideInUp 0.5s ease forwards';
@@ -1417,16 +1778,16 @@
         // Initialize view toggle
         function initializeViewToggle() {
             const viewButtons = document.querySelectorAll('.view-btn');
-            
+
             viewButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const view = btn.dataset.view;
                     switchView(view);
-                    
+
                     // Update button states
                     viewButtons.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    
+
                     showNotification(`Switched to ${view} view`, 'info');
                 });
             });
@@ -1435,34 +1796,34 @@
         // Switch between grid and list view
         function switchView(view) {
             const container = document.getElementById('toolsContainer');
-            
+
             container.classList.remove('grid-view', 'list-view');
             container.classList.add(`${view}-view`);
-            
+
             currentView = view;
             localStorage.setItem('viewPreference', view);
-            
-            // Re-initialize sortable after view change
-            if (sortableInstance) {
+
+            // Re-initialize sortable after view change if in edit mode
+            if (isEditMode && sortableInstance) {
                 sortableInstance.destroy();
+                initializeSortable();
             }
-            initializeSortable();
         }
 
         // Dark mode functionality
         function toggleDarkMode() {
             document.body.classList.toggle("dark");
             updateToggleIcon();
-            
+
             const isDark = document.body.classList.contains("dark");
             localStorage.setItem("darkMode", isDark);
-            
+
             // Add transition effect
             document.body.style.transition = 'all 0.4s ease';
             setTimeout(() => {
                 document.body.style.transition = '';
             }, 400);
-            
+
             showNotification(`${isDark ? 'Dark' : 'Light'} mode activated`, 'info');
         }
 
@@ -1479,7 +1840,7 @@
         function resetToolOrder() {
             if (confirm('Are you sure you want to reset the tool order to default?')) {
                 localStorage.removeItem('toolOrder');
-                
+
                 // Restore original order (alphabetical by title)
                 const container = document.getElementById('toolsContainer');
                 const originalOrder = Array.from(allTools).sort((a, b) => {
@@ -1487,12 +1848,12 @@
                     const titleB = b.querySelector('.tool-title').textContent;
                     return titleA.localeCompare(titleB);
                 });
-                
+
                 container.innerHTML = '';
                 originalOrder.forEach(tool => container.appendChild(tool));
-                
+
                 showNotification('Tool order reset to default', 'success');
-                
+
                 // Re-apply current filters
                 applyFilters();
             }
@@ -1509,16 +1870,16 @@
             // View preference
             const viewPreference = localStorage.getItem('viewPreference') || 'grid';
             currentView = viewPreference;
-            
+
             const container = document.getElementById('toolsContainer');
             container.classList.add(`${viewPreference}-view`);
-            
+
             const viewBtn = document.querySelector(`[data-view="${viewPreference}"]`);
             if (viewBtn) {
                 document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
                 viewBtn.classList.add('active');
             }
-            
+
             // Search term
             const savedSearch = localStorage.getItem('searchTerm');
             if (savedSearch) {
@@ -1526,7 +1887,7 @@
                 searchTerm = savedSearch;
                 document.getElementById('clearSearch').style.display = 'block';
             }
-            
+
             // Category filter
             const savedCategory = localStorage.getItem('selectedCategory');
             if (savedCategory && savedCategory !== 'all') {
@@ -1534,25 +1895,39 @@
             }
         }
 
-        // Initialize drag and drop functionality
+        // Initialize drag and drop functionality (only when in edit mode)
         function initializeSortable() {
             const container = document.getElementById('toolsContainer');
+
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
 
             sortableInstance = new Sortable(container, {
                 animation: 200,
                 ghostClass: 'dragging',
                 chosenClass: 'dragging',
                 dragClass: 'dragging',
-                disabled: false,
+                handle: '.drag-handle', // Only allow dragging by the handle
+                disabled: !isEditMode, // Enable/disable based on edit mode
+                delay: 100, // Add small delay for better mobile experience
+                delayOnTouchOnly: true, // Only apply delay on touch devices
+                touchStartThreshold: 10, // Minimum distance to start drag
                 onStart: function(evt) {
                     container.classList.add('sorting');
                     evt.item.style.cursor = 'grabbing';
+                    hasMoved = true;
                 },
                 onEnd: function(evt) {
                     container.classList.remove('sorting');
                     evt.item.style.cursor = 'grab';
                     saveToolOrder();
                     showNotification('Tool order saved!', 'success');
+
+                    // Reset touch tracking
+                    setTimeout(() => {
+                        hasMoved = false;
+                    }, 100);
                 }
             });
         }
@@ -1563,7 +1938,7 @@
             const order = Array.from(container.children)
                 .filter(child => child.classList.contains('tool-card'))
                 .map(child => child.getAttribute('data-id'));
-            
+
             localStorage.setItem('toolOrder', JSON.stringify(order));
         }
 
@@ -1571,12 +1946,12 @@
         function applySavedOrder() {
             const container = document.getElementById('toolsContainer');
             const savedOrder = localStorage.getItem('toolOrder');
-            
+
             if (savedOrder) {
                 try {
                     const order = JSON.parse(savedOrder);
                     const fragment = document.createDocumentFragment();
-                    
+
                     // Reorder elements based on saved order
                     order.forEach(id => {
                         const element = document.querySelector(`[data-id="${id}"]`);
@@ -1584,15 +1959,15 @@
                             fragment.appendChild(element);
                         }
                     });
-                    
+
                     // Add any elements that weren't in the saved order
                     Array.from(container.children).forEach(child => {
-                        if (child.classList.contains('tool-card') && 
+                        if (child.classList.contains('tool-card') &&
                             !order.includes(child.getAttribute('data-id'))) {
                             fragment.appendChild(child);
                         }
                     });
-                    
+
                     // Replace the container's children with the sorted fragment
                     container.innerHTML = '';
                     container.appendChild(fragment);
@@ -1607,19 +1982,19 @@
             const notification = document.getElementById('notification');
             const notificationText = document.getElementById('notificationText');
             const icon = notification.querySelector('i');
-            
+
             // Set message and type
             notificationText.textContent = message;
             notification.className = `notification ${type}`;
-            
+
             // Set appropriate icon
             icon.className = type === 'success' ? 'fas fa-check-circle' :
-                           type === 'error' ? 'fas fa-exclamation-triangle' :
-                           'fas fa-info-circle';
-            
+                type === 'error' ? 'fas fa-exclamation-triangle' :
+                'fas fa-info-circle';
+
             // Show notification
             notification.classList.add('show');
-            
+
             // Auto hide after 3 seconds
             setTimeout(() => {
                 notification.classList.remove('show');
@@ -1632,14 +2007,14 @@
             const windowHeight = document.documentElement.scrollHeight - window.innerHeight;
             const scrolled = window.scrollY;
             const progress = windowHeight > 0 ? (scrolled / windowHeight) * 100 : 0;
-            
+
             indicator.style.transform = `scaleX(${Math.min(progress, 100) / 100})`;
         }
 
         // Handle window resize
         function handleResize() {
             updateScrollIndicator();
-            
+
             // Close any open dropdowns on resize
             document.getElementById('filterMenu').classList.remove('show');
         }
@@ -1653,25 +2028,33 @@
                     document.getElementById('searchBox').focus();
                     showNotification('Search focused (Ctrl+K)', 'info');
                 }
-                
+
                 // Ctrl/Cmd + D to toggle dark mode
                 if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
                     e.preventDefault();
                     toggleDarkMode();
                 }
-                
+
+                // Ctrl/Cmd + E to toggle edit mode
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    toggleEditMode();
+                }
+
                 // Escape to clear search or close dropdowns
                 if (e.key === 'Escape') {
                     const searchBox = document.getElementById('searchBox');
                     const filterMenu = document.getElementById('filterMenu');
-                    
+
                     if (filterMenu.classList.contains('show')) {
                         filterMenu.classList.remove('show');
                     } else if (searchBox.value) {
                         clearSearch();
+                    } else if (isEditMode) {
+                        toggleEditMode();
                     }
                 }
-                
+
                 // Ctrl/Cmd + R to reset tool order
                 if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
                     e.preventDefault();
@@ -1681,7 +2064,25 @@
         }
 
         // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', initializeApp);
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+
+            // Setup touch events for dynamically added cards
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('tool-card')) {
+                            setupTouchEvents(node);
+                        }
+                    });
+                });
+            });
+
+            observer.observe(document.getElementById('toolsContainer'), {
+                childList: true,
+                subtree: true
+            });
+        });
 
         // Handle page visibility change (pause animations when tab is not active)
         document.addEventListener('visibilitychange', () => {
@@ -1708,148 +2109,6 @@
             });
         }
     </script>
-
-    <style>
-        /* Additional responsive improvements */
-        @media (max-width: 320px) {
-            .header-title {
-                font-size: 0.9em;
-            }
-            
-            .search-box {
-                width: 180px;
-                font-size: 13px;
-            }
-            
-            .search-box:focus {
-                width: 200px;
-            }
-            
-            .tool-card {
-                padding: 15px;
-                margin: 10px 0;
-            }
-            
-            .tool-title {
-                font-size: 1.1em;
-            }
-            
-            .tool-desc {
-                font-size: 0.9em;
-            }
-        }
-
-        /* High contrast mode support */
-        @media (prefers-contrast: high) {
-            :root {
-                --border-color: #000;
-                --shadow-light: rgba(0, 0, 0, 0.5);
-                --shadow-dark: rgba(0, 0, 0, 0.8);
-            }
-            
-            body.dark {
-                --border-color: #fff;
-            }
-        }
-
-        /* Reduced motion support */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-            
-            .floating-circle {
-                animation: none;
-            }
-            
-            .tool-card {
-                animation: none;
-                opacity: 1;
-                transform: none;
-            }
-        }
-
-        /* Print styles */
-        @media print {
-            header, .stats-bar, .notification, .floating-elements, .scroll-indicator {
-                display: none !important;
-            }
-            
-            .tool-card {
-                break-inside: avoid;
-                box-shadow: none;
-                border: 1px solid #000;
-                margin-bottom: 10px;
-            }
-            
-            .tool-card:hover {
-                transform: none;
-            }
-            
-            .container {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-        }
-
-        /* Focus indicators for better accessibility */
-        .search-box:focus,
-        .view-btn:focus,
-        .toggle-btn:focus,
-        .reset-btn:focus,
-        .filter-btn:focus {
-            outline: 2px solid var(--icon-color);
-            outline-offset: 2px;
-        }
-
-        .tool-card:focus {
-            outline: 3px solid var(--icon-color);
-            outline-offset: 2px;
-        }
-
-        /* Loading state */
-        .loading {
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        .loading::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            margin: -10px 0 0 -10px;
-            border: 2px solid transparent;
-            border-top: 2px solid var(--icon-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Improved tooltip styles for better UX */
-        .tool-card[title]:hover::before {
-            content: attr(title);
-            position: absolute;
-            bottom: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--card-bg);
-            color: var(--card-text);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.8em;
-            white-space: nowrap;
-            box-shadow: 0 2px 10px var(--shadow-dark);
-            z-index: 1000;
-        }
-    </style>
 </body>
+
 </html>
