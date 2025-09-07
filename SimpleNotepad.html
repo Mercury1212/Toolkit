@@ -405,7 +405,7 @@
   </div>
 
   <!-- Hidden file input for loading notes -->
-  <input type="file" id="fileInput" accept=".txt,.securenote" style="display: none;" />
+  <input type="file" id="fileInput" accept=".txt" style="display: none;" />
 
   <!-- Encryption Modal -->
   <div class="modal" id="encryptModal">
@@ -471,9 +471,6 @@
     </div>
   </div>
 
-  <!-- Load argon2-browser (bundled; exposes window.argon2) -->
-  <script src="argon2-bundled.min.js"></script>
-
   <script>
   (async () => {
     // DOM Elements
@@ -528,16 +525,6 @@
       // Check for secure context
       if (!window.isSecureContext) {
         setStatus('Warning: This page must be served over HTTPS or http://localhost for Web Crypto to work securely.', false);
-      }
-      
-      // Wait for Argon2 WASM to be ready (optional)
-      try {
-        if (window.argon2 && argon2.ready) {
-          await argon2.ready;
-        }
-      } catch (e) {
-        setStatus('Argon2 failed to initialize. Encryption features may not work.', false);
-        console.error(e);
       }
       
       // Update UI
@@ -595,11 +582,11 @@
     }
 
     function updateParamInfo() {
-      const encryptPreset = encryptArgonPreset.value;
-      encryptParamInfo.textContent = argonParams[encryptPreset].desc;
+      const encryptPreset = qs('#encryptArgonPreset').value;
+      qs('#encryptParamInfo').textContent = argonParams[encryptPreset].desc;
       
-      const decryptPreset = decryptArgonPreset.value;
-      decryptParamInfo.textContent = argonParams[decryptPreset].desc;
+      const decryptPreset = qs('#decryptArgonPreset').value;
+      qs('#decryptParamInfo').textContent = argonParams[decryptPreset].desc;
     }
 
     function createNewNote() {
@@ -644,70 +631,103 @@
       }
     }
 
-    async function saveNoteToFile() {
-    currentNote.content = currentNote.isEncrypted ? currentNote.content : editor.value;
-    
-    try {
-      let fileHandle;
+    function shouldUseDownloadFallback() {
+      // Check if we're on a mobile device
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      if (currentNote.fileHandle) {
-        fileHandle = currentNote.fileHandle;
-      } else {
-        try {
-          // Try modern File System Access API
-          fileHandle = await window.showSaveFilePicker({
-            suggestedName: getSuggestedFilename(),
-            types: [{
-              description: 'Text Files',
-              accept: { 'text/plain': ['.txt'] }
-            }]
-          });
-        } catch (err) {
-          if (err.name === 'AbortError') return; // user cancelled
-          console.warn("Falling back to download method:", err);
-          fallbackSave();
-          return;
-        }
+      // Check if File System Access API is available
+      const isFileSystemAccessAPISupported = 
+        window.showSaveFilePicker && 
+        window.FileSystemHandle &&
+        window.FileSystemWritableFileStream;
+      
+      // Use fallback on mobile or when API is not supported
+      return isMobile || !isFileSystemAccessAPISupported;
+    }
+
+    async function saveNoteToFile() {
+      currentNote.content = currentNote.isEncrypted ? currentNote.content : editor.value;
+      
+      // Check if we should use fallback (mobile or unsupported browser)
+      if (shouldUseDownloadFallback()) {
+        fallbackSave();
+        return;
       }
       
-      const writable = await fileHandle.createWritable();
-      await writable.write(currentNote.content);
-      await writable.close();
-      currentNote.fileHandle = fileHandle;
-      setStatus('Note saved to ' + fileHandle.name);
-    } catch (err) {
-      console.error('Error saving file:', err);
-      setStatus('Error saving file: ' + err.message);
-      fallbackSave();
+      try {
+        let fileHandle;
+        
+        // If we already have a file handle, use it
+        if (currentNote.fileHandle) {
+          fileHandle = currentNote.fileHandle;
+        } else {
+          // Otherwise, show the file picker
+          try {
+            fileHandle = await window.showSaveFilePicker({
+              suggestedName: getSuggestedFilename(),
+              types: [{
+                description: 'Text Files',
+                accept: {
+                  'text/plain': ['.txt']
+                }
+              }]
+            });
+          } catch (err) {
+            // User cancelled the save dialog
+            if (err.name !== 'AbortError') {
+              console.error('Error saving file:', err);
+              setStatus('Error saving file: ' + err.message);
+            }
+            return;
+          }
+        }
+        
+        // Create a writer
+        const writable = await fileHandle.createWritable();
+        
+        // Write the content
+        await writable.write(currentNote.content);
+        await writable.close();
+        
+        // Remember the file handle for future saves
+        currentNote.fileHandle = fileHandle;
+        
+        setStatus('Note saved to ' + fileHandle.name);
+      } catch (err) {
+        console.error('Error saving file:', err);
+        setStatus('Error saving file: ' + err.message);
+        
+        // Fallback to download if File System Access API is not available
+        fallbackSave();
+      }
     }
-  }
 
-  function fallbackSave() {
-    const blob = new Blob([currentNote.content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = getSuggestedFilename();
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setStatus('Note downloaded as ' + a.download);
-  }
+    function fallbackSave() {
+      // Create a blob with the content
+      const blob = new Blob([currentNote.content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create a download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = getSuggestedFilename();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setStatus('Note downloaded as ' + a.download);
+    }
 
-  function getSuggestedFilename() {
-    if (currentNote.fileHandle) return currentNote.fileHandle.name;
-    const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 50);
-    const baseName = (firstLine || 'secure_note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    // Always save as .txt (even if encrypted)
-    return `${baseName}.txt`;
-  }
+    function getSuggestedFilename() {
+      if (currentNote.fileHandle) {
+        return currentNote.fileHandle.name;
+      }
       
       const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 50);
       const baseName = (firstLine || 'secure_note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      return currentNote.isEncrypted ? 
-        `${baseName}.securenote` : 
-        `${baseName}.txt`;
+      // Always use .txt extension for both encrypted and unencrypted content
+      return `${baseName}.txt`;
     }
 
     function b64UrlEncode(buf) {
@@ -725,20 +745,28 @@
     async function deriveKey(pass, salt, params) {
       const p = argonParams[params.preset || 'moderate'];
       
-      if (!window.argon2 || typeof argon2.hash !== 'function') {
-        throw new Error('Argon2 is not available. Please ensure argon2-bundled.min.js is loaded correctly.');
-      }
+      // Use Web Crypto API for key derivation instead of Argon2
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(pass),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+      );
       
-      const { hash } = await argon2.hash({
-        pass,
-        salt,
-        time: p.time,
-        mem: p.mem,
-        hashLen: 32,
-        parallelism: p.parallelism,
-        type: argon2.ArgonType.Argon2id
-      });
-      return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt','decrypt']);
+      return crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: p.time * 1000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
     }
 
     async function encryptNoteContent(content, password, params) {
@@ -798,11 +826,11 @@
     }
 
     function showEncryptModal() {
-      encryptPassword.value = '';
-      encryptArgonPreset.value = 'moderate';
+      qs('#encryptPassword').value = '';
+      qs('#encryptArgonPreset').value = 'moderate';
       updateParamInfo();
       encryptModal.classList.add('active');
-      encryptPassword.focus();
+      qs('#encryptPassword').focus();
     }
 
     function hideEncryptModal() {
@@ -811,13 +839,13 @@
 
     async function doEncrypt() {
       try {
-        const password = encryptPassword.value;
+        const password = qs('#encryptPassword').value;
         if (!password) {
           alert('Password required');
           return;
         }
         
-        const preset = encryptArgonPreset.value;
+        const preset = qs('#encryptArgonPreset').value;
         const content = editor.value;
         const params = { preset, timestamp: Date.now() };
         
@@ -840,11 +868,11 @@
     }
 
     function showDecryptModal() {
-      decryptPassword.value = '';
-      decryptArgonPreset.value = 'moderate';
+      qs('#decryptPassword').value = '';
+      qs('#decryptArgonPreset').value = 'moderate';
       updateParamInfo();
       decryptModal.classList.add('active');
-      decryptPassword.focus();
+      qs('#decryptPassword').focus();
     }
 
     function hideDecryptModal() {
@@ -853,13 +881,13 @@
 
     async function doDecrypt() {
       try {
-        const password = decryptPassword.value;
+        const password = qs('#decryptPassword').value;
         if (!password) {
           alert('Password required');
           return;
         }
         
-        const preset = decryptArgonPreset.value;
+        const preset = qs('#decryptArgonPreset').value;
         const params = { preset };
         
         const decryptedContent = await decryptNoteContent(currentNote.content, password, params);
@@ -963,8 +991,8 @@
       btnCancelDecrypt.addEventListener('click', hideDecryptModal);
       
       // Argon2 parameter selection
-      encryptArgonPreset.addEventListener('change', updateParamInfo);
-      decryptArgonPreset.addEventListener('change', updateParamInfo);
+      qs('#encryptArgonPreset').addEventListener('change', updateParamInfo);
+      qs('#decryptArgonPreset').addEventListener('change', updateParamInfo);
       
       // Password visibility toggle
       document.querySelectorAll('.toggle-password').forEach(button => {
@@ -976,9 +1004,9 @@
           // Update the eye icon
           const icon = this.querySelector('.eye-icon');
           if (isPassword) {
-            icon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27M7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+            icon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27M7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-极2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
           } else {
-            icon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+            icon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-极7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 极5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
           }
         });
       });
@@ -1005,7 +1033,7 @@
           e.preventDefault();
           createNewNote();
         }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        if ((极e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
           e.preventDefault();
           if (!btnEncryptNote.disabled) showEncryptModal();
         }
@@ -1020,11 +1048,11 @@
       });
       
       // Allow pressing Enter in modals to confirm
-      encryptPassword.addEventListener('keydown', (e) => {
+      qs('#encryptPassword').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') doEncrypt();
       });
       
-      decryptPassword.addEventListener('keydown', (e) => {
+      qs('#decryptPassword').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') doDecrypt();
       });
       
@@ -1036,7 +1064,7 @@
       document.addEventListener('drop', (e) => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.txt') || file.name.endsWith('.securenote') || file.type === 'text/plain')) {
+        if (file && (file.name.endsWith('.txt') || file.type === 'text/plain')) {
           handleFileImport(file);
         }
       });
@@ -1054,7 +1082,7 @@
       });
       
       // Add context menu to show instruction
-      pageHeader.addEventListener('contextmenu', (e) => {
+      pageHeader.addEventListener('contextmenu', (e) {
         e.preventDefault();
         alert("Click to clear all content\nCtrl+Click to open new tab");
       });
