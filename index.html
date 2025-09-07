@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tools Hub</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="all.min.css">
+    <!-- Add SortableJS library -->
+    <script src="Sortable.min.js"></script>
     <style>
         :root {
             --bg-color: #f4f6f9;
@@ -79,6 +81,7 @@
             transition: transform 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s;
             text-decoration: none;
             color: var(--card-text);
+            cursor: grab;
         }
 
         .tool-card:hover {
@@ -103,6 +106,12 @@
             font-size: 0.9em;
             color: var(--card-desc);
         }
+
+        /* Style for dragging */
+        .dragging {
+            opacity: 0.6;
+            background: var(--accent-hover);
+        }
     </style>
 </head>
 
@@ -114,68 +123,198 @@
         </button>
     </header>
 
-    <div class="container">
-        <a href="PasswordManager.html" target="_blank" class="tool-card">
+    <div class="container" id="toolsContainer">
+        <a href="PasswordManager.html" target="_blank" class="tool-card" data-id="password-manager">
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
             <div class="tool-title">Password Manager</div>
             <div class="tool-desc">Securely store and manage passwords</div>
         </a>
 
-        <a href="WebAuthenticator.html" target="_blank" class="tool-card">
+        <a href="WebAuthenticator.html" target="_blank" class="tool-card" data-id="authenticator">
             <div class="tool-icon" style="color:#2ecc71;"><i class="fas fa-mobile-alt"></i></div>
             <div class="tool-title">2FA Authenticator</div>
             <div class="tool-desc">Save backup 2FA codes offline</div>
         </a>
 
-        <a href="TextEncryptor.html" target="_blank" class="tool-card">
+        <a href="TextEncryptor.html" target="_blank" class="tool-card" data-id="text-encryptor">
             <div class="tool-icon" style="color:#f39c12;"><i class="fas fa-key"></i></div>
             <div class="tool-title">Text Encryptor</div>
             <div class="tool-desc">Encrypt/decrypt text with Argon2 + AES</div>
         </a>
 
-        <a href="SecurityToolkit.html" target="_blank" class="tool-card">
+        <a href="SecurityToolkit.html" target="_blank" class="tool-card" data-id="security-toolkit">
             <div class="tool-icon" style="color:#9b59b6;"><i class="fas fa-toolbox"></i></div>
             <div class="tool-title">Security Toolkit</div>
             <div class="tool-desc">Password generator & TOTP generator</div>
         </a>
 
-        <a href="SimpleNotepad.html" target="_blank" class="tool-card">
+        <a href="SimpleNotepad.html" target="_blank" class="tool-card" data-id="notepad">
             <div class="tool-icon" style="color:#1abc9c;"><i class="fas fa-sticky-note"></i></div>
             <div class="tool-title">Notepad</div>
             <div class="tool-desc">Simple online notepad with encryption</div>
         </a>
 
-        <a href="SecureNotepad.html" target="_blank" class="tool-card">
+        <a href="SecureNotepad.html" target="_blank" class="tool-card" data-id="secure-notepad">
             <div class="tool-icon" style="color:#3498db;"><i class="fas fa-sticky-note"></i></div>
             <div class="tool-title">Secure Notepad</div>
             <div class="tool-desc">Secure text notes with encryption</div>
         </a>
 
-        <a href="Scrambler.html" target="_blank" class="tool-card">
+        <a href="Scrambler.html" target="_blank" class="tool-card" data-id="scrambler">
             <div class="tool-icon" style="color:#e67e22;"><i class="fas fa-random"></i></div>
             <div class="tool-title">Text Scrambler</div>
             <div class="tool-desc">Reversible Text Scrambler with password protection</div>
         </a>
 
-        <a href="FileLocker.html" target="_blank" class="tool-card">
+        <a href="FileLocker.html" target="_blank" class="tool-card" data-id="file-locker">
             <div class="tool-icon" style="color:#f39c12;"><i class="fa-solid fa-file-shield"></i></div>
             <div class="tool-title">File Locker</div>
             <div class="tool-desc">Encrypt files using Argon2id + AES</div>
         </a>
-        
-        <a href="PowerCalculator.html" target="_blank" class="tool-card">
+
+        <a href="PowerCalculator.html" target="_blank" class="tool-card" data-id="power-calculator">
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-bolt"></i></div>
             <div class="tool-title">Power Calculator</div>
             <div class="tool-desc">Class D Amplifier Power Calculator</div>
         </a>
-        
-        <a href="QRTools.html" target="_blank" class="tool-card">
+
+        <a href="https://www.facebook.com" target="_blank" class="tool-card" data-id="qrcode-reader">
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
             <div class="tool-title">QRcode Reader</div>
             <div class="tool-desc">Class D Amplifier Power Calculator</div>
         </a>
-        
 
+        <a href="https://app.keeweb.info//" target="_blank" class="tool-card" data-id="keeweb">
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
+            <div class="tool-title">keeweb</div>
+            <div class="tool-desc">KeePassXC official site</div>
+        </a>
+
+        <a href="https://www.facebook.com/" target="_blank" class="tool-card" data-id="facebook">
+            <div class="tool-icon" style="color:#1877f2;"><i class="fab fa-facebook"></i></div>
+            <div class="tool-title">Facebook</div>
+            <div class="tool-desc">Connect with friends and family</div>
+        </a>
+
+        <a href="https://www.messenger.com/" target="_blank" class="tool-card" data-id="messenger">
+            <div class="tool-icon" style="color:#00b2ff;"><i class="fab fa-facebook-messenger"></i></div>
+            <div class="tool-title">Messenger</div>
+            <div class="tool-desc">Chat with Facebook friends</div>
+        </a>
+
+        <a href="https://www.instagram.com/" target="_blank" class="tool-card" data-id="instagram">
+            <div class="tool-icon" style="color:#e1306c;"><i class="fab fa-instagram"></i></div>
+            <div class="tool-title">Instagram</div>
+            <div class="tool-desc">Photos, reels and stories</div>
+        </a>
+
+        <a href="https://www.tiktok.com/" target="_blank" class="tool-card" data-id="tiktok">
+            <div class="tool-icon" style="color:#000000;"><i class="fab fa-tiktok"></i></div>
+            <div class="tool-title">TikTok</div>
+            <div class="tool-desc">Short-form videos and trends</div>
+        </a>
+
+        <a href="https://twitter.com/" target="_blank" class="tool-card" data-id="twitter">
+            <div class="tool-icon" style="color:#1da1f2;"><i class="fab fa-twitter"></i></div>
+            <div class="tool-title">Twitter (X)</div>
+            <div class="tool-desc">Latest news and trending topics</div>
+        </a>
+
+        <a href="https://www.youtube.com/" target="_blank" class="tool-card" data-id="youtube">
+            <div class="tool-icon" style="color:#ff0000;"><i class="fab fa-youtube"></i></div>
+            <div class="tool-title">YouTube</div>
+            <div class="tool-desc">Watch and share videos</div>
+        </a>
+
+        <a href="https://www.netflix.com/" target="_blank" class="tool-card" data-id="netflix">
+            <div class="tool-icon" style="color:#e50914;"><i class="fas fa-film"></i></div>
+            <div class="tool-title">Netflix</div>
+            <div class="tool-desc">Watch TV shows and movies online</div>
+        </a>
+
+        <a href="https://github.com/" target="_blank" class="tool-card" data-id="github">
+            <div class="tool-icon" style="color:#333;"><i class="fab fa-github"></i></div>
+            <div class="tool-title">GitHub</div>
+            <div class="tool-desc">Code hosting and collaboration</div>
+        </a>
+
+        <a href="https://www.google.com/" target="_blank" class="tool-card" data-id="google">
+            <div class="tool-icon" style="color:#4285f4;"><i class="fab fa-google"></i></div>
+            <div class="tool-title">Google</div>
+            <div class="tool-desc">Search the world's information</div>
+        </a>
+
+        <a href="https://mail.google.com/" target="_blank" class="tool-card" data-id="gmail">
+            <div class="tool-icon" style="color:#ea4335;"><i class="fas fa-envelope"></i></div>
+            <div class="tool-title">Gmail</div>
+            <div class="tool-desc">Google's free email service</div>
+        </a>
+
+        <a href="https://drive.google.com/" target="_blank" class="tool-card" data-id="drive">
+            <div class="tool-icon" style="color:#34a853;"><i class="fab fa-google-drive"></i></div>
+            <div class="tool-title">Google Drive</div>
+            <div class="tool-desc">Store and access your files anywhere</div>
+        </a>
+
+        <a href="https://www.terabox.com/" target="_blank" class="tool-card" data-id="terabox">
+            <div class="tool-icon" style="color:#0066ff;"><i class="fas fa-cloud"></i></div>
+            <div class="tool-title">Terabox</div>
+            <div class="tool-desc">Free 1TB cloud storage</div>
+        </a>
+
+        <a href="https://www.linkedin.com/" target="_blank" class="tool-card" data-id="linkedin">
+            <div class="tool-icon" style="color:#0a66c2;"><i class="fab fa-linkedin"></i></div>
+            <div class="tool-title">LinkedIn</div>
+            <div class="tool-desc">Professional networking</div>
+        </a>
+
+        <a href="https://shopee.ph/" target="_blank" class="tool-card" data-id="shopee">
+            <div class="tool-icon" style="color:#ee4d2d;"><i class="fas fa-shopping-bag"></i></div>
+            <div class="tool-title">Shopee</div>
+            <div class="tool-desc">Online shopping made easy</div>
+        </a>
+
+        <a href="https://www.lazada.com.ph/" target="_blank" class="tool-card" data-id="lazada">
+            <div class="tool-icon" style="color:#1a9fff;"><i class="fas fa-store"></i></div>
+            <div class="tool-title">Lazada</div>
+            <div class="tool-desc">Shop for everything online</div>
+        </a>
+
+        <a href="https://app.grass.io/dashboard" target="_blank" class="tool-card" data-id="grass">
+            <div class="tool-icon" style="color:#28a745;"><i class="fas fa-leaf"></i></div>
+            <div class="tool-title">Grass</div>
+            <div class="tool-desc">Earn rewards with Grass dashboard</div>
+        </a>
+
+        <a href="https://chat.deepseek.com/" target="_blank" class="tool-card" data-id="deepseek">
+            <div class="tool-icon" style="color:#6c63ff;"><i class="fas fa-brain"></i></div>
+            <div class="tool-title">DeepSeek Chat</div>
+            <div class="tool-desc">AI-powered chatbot platform</div>
+        </a>
+
+        <a href="https://chatgpt.com/" target="_blank" class="tool-card" data-id="chatgpt">
+            <div class="tool-icon" style="color:#10a37f;"><i class="fas fa-robot"></i></div>
+            <div class="tool-title">ChatGPT</div>
+            <div class="tool-desc">Conversational AI assistant</div>
+        </a>
+
+        <a href="https://terabox.hnn.workers.dev/" target="_blank" class="tool-card" data-id="terabox-proxy">
+            <div class="tool-icon" style="color:#0066ff;"><i class="fas fa-cloud"></i></div>
+            <div class="tool-title">Terabox Proxy</div>
+            <div class="tool-desc">Access Terabox files via proxy</div>
+        </a>
+
+        <a href="https://smartthingsfind.samsung.com/" target="_blank" class="tool-card" data-id="samsung-find">
+            <div class="tool-icon" style="color:#1428a0;"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="tool-title">Samsung Find</div>
+            <div class="tool-desc">Locate your Samsung devices</div>
+        </a>
+
+        <a href="https://music.youtube.com/" target="_blank" class="tool-card" data-id="youtube-music">
+            <div class="tool-icon" style="color:#ff0000;"><i class="fas fa-music"></i></div>
+            <div class="tool-title">YouTube Music</div>
+            <div class="tool-desc">Stream and discover music</div>
+        </a>
     </div>
 
     <script>
@@ -201,6 +340,38 @@
                 document.body.classList.add("dark");
             }
             updateToggleIcon();
+            
+            // Initialize SortableJS for drag and drop
+            initSortable();
+        }
+
+        // Initialize SortableJS for drag and drop functionality
+        function initSortable() {
+            const container = document.getElementById('toolsContainer');
+            
+            // Get saved order from localStorage if it exists
+            const savedOrder = localStorage.getItem('toolOrder');
+            if (savedOrder) {
+                const order = JSON.parse(savedOrder);
+                // Reorder elements based on saved order
+                order.forEach(id => {
+                    const element = document.querySelector(`[data-id="${id}"]`);
+                    if (element) {
+                        container.appendChild(element);
+                    }
+                });
+            }
+            
+            // Initialize SortableJS
+            new Sortable(container, {
+                animation: 150,
+                ghostClass: 'dragging',
+                onEnd: function() {
+                    // Save the new order to localStorage
+                    const order = Array.from(container.children).map(child => child.getAttribute('data-id'));
+                    localStorage.setItem('toolOrder', JSON.stringify(order));
+                }
+            });
         }
     </script>
 </body>
