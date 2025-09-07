@@ -178,10 +178,16 @@
             <div class="tool-desc">Class D Amplifier Power Calculator</div>
         </a>
 
-        <a href="https://scanqr.org/qr-code-generator/" target="_blank" class="tool-card" data-id="qrcode-reader">
+        <a href="QRTools.html" target="_blank" class="tool-card" data-id="qrcode-reader">
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
-            <div class="tool-title">QRcode Reader</div>
-            <div class="tool-desc">Class D Amplifier Power Calculator</div>
+            <div class="tool-title">My QR Tools</div>
+            <div class="tool-desc">Self-Hosted QR tools</div>
+        </a>
+
+        <a href="https://scanqr.org/" target="_blank" class="tool-card" data-id="qrcode-reader">
+            <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
+            <div class="tool-title">scanqr.org</div>
+            <div class="tool-desc">QR Code generator - Scanner</div>
         </a>
 
         <a href="https://app.keeweb.info//" target="_blank" class="tool-card" data-id="keeweb">
@@ -340,7 +346,7 @@
                 document.body.classList.add("dark");
             }
             updateToggleIcon();
-            
+
             // Initialize SortableJS for drag and drop
             initSortable();
         }
@@ -348,7 +354,7 @@
         // Initialize SortableJS for drag and drop functionality
         function initSortable() {
             const container = document.getElementById('toolsContainer');
-            
+
             // Get saved order from localStorage if it exists
             const savedOrder = localStorage.getItem('toolOrder');
             if (savedOrder) {
@@ -361,7 +367,7 @@
                     }
                 });
             }
-            
+
             // Initialize SortableJS
             new Sortable(container, {
                 animation: 150,
