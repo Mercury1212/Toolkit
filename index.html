@@ -7,7 +7,7 @@
     <title>My Tools Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Add SortableJS library -->
-    <script src="Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
         :root {
             --bg-color: #f4f6f9;
@@ -112,6 +112,27 @@
             opacity: 0.6;
             background: var(--accent-hover);
         }
+        
+        /* Save notification */
+        .save-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 1000;
+        }
+        
+        .save-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 
@@ -124,14 +145,12 @@
     </header>
 
     <div class="container" id="toolsContainer">
+        <!-- Tool cards will be dynamically reordered by JavaScript -->
         <a href="PasswordManager.html" target="_blank" class="tool-card" data-id="password-manager">
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-shield-alt"></i></div>
             <div class="tool-title">Password Manager</div>
             <div class="tool-desc">Securely store and manage passwords</div>
         </a>
-
-        
-
 
         <a href="WebAuthenticator.html" target="_blank" class="tool-card" data-id="authenticator">
             <div class="tool-icon" style="color:#2ecc71;"><i class="fas fa-mobile-alt"></i></div>
@@ -187,7 +206,7 @@
             <div class="tool-desc">Self-Hosted QR tools</div>
         </a>
 
-        <a href="https://scanqr.org/qr-code-generator/" target="_blank" class="tool-card" data-id="qrcode-reader">
+        <a href="https://scanqr.org/qr-code-generator/" target="_blank" class="tool-card" data-id="qrcode-generator">
             <div class="tool-icon" style="color:#e74c3c;"><i class="fas fa-qrcode"></i></div>
             <div class="tool-title">scanqr.org</div>
             <div class="tool-desc">QR Code generator - Scanner</div>
@@ -325,19 +344,20 @@
             <div class="tool-desc">Stream and discover music</div>
         </a>
         
-        <a href="https://login.tailscale.com/admin/machines" target="_blank" class="tool-card">
+        <a href="https://login.tailscale.com/admin/machines" target="_blank" class="tool-card" data-id="tailscale">
             <div class="tool-icon" style="color:#2b6cb0;"><i class="fas fa-laptop-code"></i></div>
             <div class="tool-title">Tailscale VPN</div>
             <div class="tool-desc">Manage connected devices in your Tailscale network</div>
         </a>
 
-        <a href="https://dash.cloudflare.com/" target="_blank" class="tool-card">
+        <a href="https://dash.cloudflare.com/" target="_blank" class="tool-card" data-id="cloudflare">
             <div class="tool-icon" style="color:#f38020;"><i class="fas fa-cloud"></i></div>
             <div class="tool-title">Cloudflare Dashboard</div>
             <div class="tool-desc">Manage your domains, DNS, and security settings</div>
         </a>
-        
     </div>
+
+    <div class="save-notification" id="saveNotification">Order saved!</div>
 
     <script>
         // Dark mode toggle with persistence
@@ -356,6 +376,16 @@
             }
         }
 
+        // Show save notification
+        function showSaveNotification() {
+            const notification = document.getElementById('saveNotification');
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        }
+
         // Load preference on page load
         window.onload = () => {
             if (localStorage.getItem("darkMode") === "true") {
@@ -365,33 +395,58 @@
 
             // Initialize SortableJS for drag and drop
             initSortable();
+            
+            // Apply saved order immediately
+            applySavedOrder();
+        }
+
+        // Apply saved order from localStorage
+        function applySavedOrder() {
+            const container = document.getElementById('toolsContainer');
+            const savedOrder = localStorage.getItem('toolOrder');
+            
+            if (savedOrder) {
+                const order = JSON.parse(savedOrder);
+                
+                // Create a temporary container to hold our elements while we sort
+                const fragment = document.createDocumentFragment();
+                
+                // Reorder elements based on saved order
+                order.forEach(id => {
+                    const element = document.querySelector(`[data-id="${id}"]`);
+                    if (element) {
+                        fragment.appendChild(element);
+                    }
+                });
+                
+                // Add any elements that weren't in the saved order (newly added tools)
+                Array.from(container.children).forEach(child => {
+                    if (!order.includes(child.getAttribute('data-id'))) {
+                        fragment.appendChild(child);
+                    }
+                });
+                
+                // Replace the container's children with the sorted fragment
+                container.innerHTML = '';
+                container.appendChild(fragment);
+            }
         }
 
         // Initialize SortableJS for drag and drop functionality
         function initSortable() {
             const container = document.getElementById('toolsContainer');
 
-            // Get saved order from localStorage if it exists
-            const savedOrder = localStorage.getItem('toolOrder');
-            if (savedOrder) {
-                const order = JSON.parse(savedOrder);
-                // Reorder elements based on saved order
-                order.forEach(id => {
-                    const element = document.querySelector(`[data-id="${id}"]`);
-                    if (element) {
-                        container.appendChild(element);
-                    }
-                });
-            }
-
             // Initialize SortableJS
-            new Sortable(container, {
+            const sortable = new Sortable(container, {
                 animation: 150,
                 ghostClass: 'dragging',
                 onEnd: function() {
                     // Save the new order to localStorage
                     const order = Array.from(container.children).map(child => child.getAttribute('data-id'));
                     localStorage.setItem('toolOrder', JSON.stringify(order));
+                    
+                    // Show save notification
+                    showSaveNotification();
                 }
             });
         }
