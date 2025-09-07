@@ -804,7 +804,7 @@
                     return currentNote.fileHandle.name;
                 }
 
-                const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 50);
+                const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 8);
                 const baseName = (firstLine || 'secure_note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 // Always use .txt extension regardless of encryption status
                 return `${baseName}.txt`;
