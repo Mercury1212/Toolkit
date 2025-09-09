@@ -4,11 +4,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Secure Notepad - Encrypted Notes</title>
+    <title>Secure Notepad Pro - Encrypted Notes</title>
     <meta name="description" content="A secure notepad with client-side encryption to protect your notes">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --bg: #0b1220;
+            --sidebar-bg: #070b15;
             --card: #0f172a;
             --muted: #94a3b8;
             --text: #e2e8f0;
@@ -16,6 +18,7 @@
             --accent-2: #22c55e;
             --danger: #f43f5e;
             --warning: #f59e0b;
+            --border: rgba(148, 163, 184, 0.1);
         }
 
         * {
@@ -26,89 +29,160 @@
 
         body {
             margin: 0;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
             background: radial-gradient(1200px 800px at 10% -10%, #0b2a3a 0%, transparent 60%),
                 radial-gradient(1200px 800px at 110% 10%, #1a1f61 0%, transparent 60%),
                 var(--bg);
             color: var(--text);
             line-height: 1.5;
-        }
-
-        .wrap {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 24px;
-        }
-
-        .card {
-            background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
-            border: 1px solid rgba(148, 163, 184, .2);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+            display: flex;
+            height: 100vh;
             overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 48px);
+            padding: 20px 0;
+            overflow-y: auto;
         }
 
-        header {
-            padding: 22px 22px 0;
-            border-bottom: 1px solid rgba(148, 163, 184, .1);
-            cursor: pointer;
-            position: relative;
-        }
-
-        header:hover h1 {
-            opacity: 0.8;
-        }
-
-        h1 {
-            margin: 0 0 6px;
-            font-size: clamp(22px, 4vw, 32px);
-            letter-spacing: .3px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: opacity 0.2s ease;
+        .logo-area {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
         }
 
         .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+
+        .logo-icon {
             width: 32px;
             height: 32px;
+            color: var(--accent);
         }
 
-        p.sub {
-            margin: 0 0 16px;
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 13px;
             color: var(--muted);
+            margin-left: 44px;
         }
 
-        .header-instructions {
-            position: absolute;
-            top: 8px;
-            right: 22px;
-            font-size: 10px;
-            opacity: 0.7;
-            text-align: right;
-            max-width: 180px;
+        .nav-section {
+            margin-bottom: 25px;
         }
 
-        .editor-area {
+        .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            padding: 0 20px;
+            margin-bottom: 15px;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-btn:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .nav-btn i {
+            width: 20px;
+            font-size: 16px;
+        }
+
+        .nav-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-right: 3px solid var(--accent);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(15, 23, 42, 0.5);
+            margin-left: auto;
+        }
+
+        /* Main Content */
+        .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        .toolbar {
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(148, 163, 184, .1);
+        .top-bar {
             display: flex;
-            gap: 8px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .note-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
         }
 
         .editor-container {
             flex: 1;
-            padding: 16px;
+            padding: 24px;
             overflow-y: auto;
             position: relative;
         }
@@ -133,170 +207,238 @@
             word-break: break-all;
             white-space: pre-wrap;
             opacity: 0.8;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
         }
 
-        textarea,
-        input[type="password"],
-        input[type="text"],
-        select {
-            width: 100%;
-            background: #0b132b;
-            border: 1px solid rgba(148, 163, 184, .25);
-            color: var(--text);
-            padding: 12px 14px;
-            border-radius: 12px;
-            font-size: 15px;
-            outline: none;
-        }
-
-        textarea {
-            min-height: 210px;
-            resize: vertical;
-        }
-
-        label {
-            display: block;
-            margin: 2px 0 6px;
-            color: #cbd5e1;
-            font-size: 13px;
-        }
-
-        .row {
+        .editor-tools {
             display: flex;
             gap: 10px;
-            align-items: center;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.3);
         }
 
-        .btns {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        button {
+        .btn {
             appearance: none;
             border: 1px solid transparent;
             background: var(--accent);
             color: #082032;
-            padding: 10px 14px;
-            border-radius: 12px;
+            padding: 10px 16px;
+            border-radius: 10px;
             font-weight: 600;
             cursor: pointer;
             transition: .15s transform, .2s filter;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
         }
 
-        button.secondary {
+        .btn i {
+            font-size: 14px;
+        }
+
+        .btn-secondary {
             background: #1f2a44;
             color: var(--text);
-            border-color: rgba(148, 163, 184, .25);
+            border-color: var(--border);
         }
 
-        button.success {
+        .btn-success {
             background: var(--accent-2);
         }
 
-        button.danger {
+        .btn-danger {
             background: var(--danger);
             color: white;
         }
 
-        button.warning {
+        .btn-warning {
             background: var(--warning);
             color: white;
         }
 
-        button:active {
+        .btn:active {
             transform: translateY(1px);
         }
 
-        button:disabled {
+        .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
 
-        .hint {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-
-        .footer {
-            padding: 12px 22px;
-            color: var(--muted);
-            font-size: 12px;
+        .status-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid rgba(148, 163, 184, .1);
+            padding: 12px 24px;
+            color: var(--muted);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.3);
         }
 
-        .badge {
-            font-size: 11px;
-            border: 1px solid rgba(148, 163, 184, .25);
-            padding: 4px 8px;
-            border-radius: 999px;
-        }
-
-        .status {
-            min-height: 20px;
-            color: #cbd5e1;
-        }
-
-        .col {
+        /* Formatting toolbar */
+        .formatting-toolbar {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            gap: 5px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 15px;
         }
 
-        .control-row {
+        .format-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
             display: flex;
-            gap: 10px;
             align-items: center;
-        }
-
-        .control-row>* {
-            flex: 1 1 auto;
-        }
-
-        #output {
-            font-family: inherit;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
             font-size: 14px;
-            line-height: 1.35;
         }
 
-        .loader {
-            display: none;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top: 3px solid var(--accent);
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
+        .format-btn:hover {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+        .format-btn.active {
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--accent);
         }
 
-        .loading {
-            display: inline-flex;
+        /* Note list */
+        .note-list {
+            padding: 10px 0;
+        }
+
+        .note-item {
+            display: flex;
             align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        #fileInput {
-            display: none;
+        .note-item:hover {
+            background: rgba(56, 189, 248, 0.1);
         }
 
+        .note-item:hover .note-item-delete {
+            opacity: 1;
+        }
+
+        .note-item.active {
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .note-item-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 0;
+        }
+
+        .note-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .note-item-name {
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .note-item-date {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .note-item-encrypted {
+            color: var(--accent);
+            margin-left: 8px;
+            font-size: 12px;
+        }
+
+        .note-item-delete {
+            color: var(--muted);
+            padding: 5px;
+            margin-left: 8px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        .note-item-delete:hover {
+            color: var(--danger);
+        }
+
+        /* Search box */
+        .search-box {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-input {
+            width: 100%;
+            background: #0b132b;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        /* Themes panel */
+        .themes-panel {
+            padding: 15px;
+        }
+
+        .theme-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+        }
+
+        .theme-option:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .theme-option.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent);
+        }
+
+        .theme-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .theme-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        /* Modals */
         .modal {
             position: fixed;
             top: 0;
@@ -337,54 +479,41 @@
             gap: 8px;
         }
 
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
+        .modal-body {
+            margin-bottom: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
         }
 
-        .param-info {
-            font-size: 12px;
-            color: var(--muted);
-            margin-top: 4px;
+        .form-group {
+            margin-bottom: 16px;
         }
 
-        .copy-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(148, 163, 184, .1);
-            border: none;
+        label {
+            display: block;
+            margin: 2px 0 6px;
+            color: #cbd5e1;
+            font-size: 13px;
+        }
+
+        input[type="password"],
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            background: #0b132b;
+            border: 1px solid var(--border);
             color: var(--text);
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 10;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            outline: none;
         }
 
-        .clear-btn {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(148, 163, 184, .1);
-            border: none;
-            color: var(--text);
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 10;
-        }
-
-        .editor-container:hover .copy-btn,
-        .editor-container:hover .clear-btn {
-            opacity: 1;
+        textarea {
+            min-height: 100px;
+            resize: vertical;
         }
 
         .password-wrapper {
@@ -407,23 +536,116 @@
             color: var(--text);
         }
 
-        .eye-icon {
-            display: block;
-            fill: currentColor;
+        .param-info {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
         }
 
-        input[type="password"],
-        input[type="text"] {
-            padding-right: 40px !important;
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
         }
 
-        @media (max-width: 768px) {
-            .toolbar {
-                flex-wrap: wrap;
+        /* Utilities */
+        .hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 8px;
+        }
+
+        .loader {
+            display: none;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid var(--accent);
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
             }
 
-            .copy-btn,
-            .clear-btn {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 15px;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Password strength meter */
+        .strength-meter {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .strength-meter-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 15px;
+            }
+
+            .nav-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .nav-btn {
+                width: auto;
+                border-radius: 8px;
+            }
+
+            .nav-btn.active {
+                border-right: none;
+                border-bottom: 3px solid var(--accent);
+            }
+
+            .note-item-delete {
                 opacity: 1;
             }
         }
@@ -431,76 +653,188 @@
 </head>
 
 <body>
-    <div class="wrap">
-        <div class="card">
-            <header id="pageHeader">
-                <h1>
-                    <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M8 7V17" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M16 7V13" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M12 7V11" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    Secure Notepad
-                </h1>
-                <p class="sub">Your private notes encrypted before saving to your device</p>
-                <div class="header-instructions">🗑️ Click to clear all<br>Ctrl+Click for new tab</div>
-            </header>
-
-            <div class="editor-area">
-                <div class="toolbar">
-                    <button id="btnNewNote" class="success">New</button>
-                    <button id="btnSaveNote" class="success">Save</button>
-                    <button id="btnEncryptNote" class="secondary">Encrypt</button>
-                    <button id="btnDecryptNote" class="secondary" disabled>Decrypt</button>
-                    <button id="btnLoadNote" class="secondary">Load</button>
-                </div>
-                <div class="editor-container">
-                    <button id="btnCopy" class="copy-btn">Copy</button>
-                    <button id="btnClear" class="clear-btn">Clear</button>
-                    <textarea id="editor" placeholder="Start typing your note here..."></textarea>
-                    <div id="encryptedContent" class="encrypted-content" style="display: none;"></div>
-                </div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-area">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M8 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M16 7V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span class="logo-text">Secure Notepad Pro</span>
             </div>
+            <p class="subtitle">Your private encrypted notes</p>
+        </div>
 
-            <div class="footer">
-                <div class="status" id="status">Ready. Notes are saved directly to your device.</div>
-                <div class="badge" id="encryptionStatus">🔓 Not encrypted</div>
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchNotes" placeholder="Search notes...">
+        </div>
+
+        <div class="nav-section">
+            <h3 class="section-title">Notes</h3>
+            <div class="note-list" id="noteList">
+                <!-- Notes will be populated here -->
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <h3 class="section-title">Actions</h3>
+            <div class="nav-buttons">
+                <button class="nav-btn active" id="btnNewNote">
+                    <i class="fas fa-plus"></i> New Note
+                </button>
+                <button class="nav-btn" id="btnSaveNote">
+                    <i class="fas fa-save"></i> Save Note
+                </button>
+                <button class="nav-btn" id="btnLoadNote">
+                    <i class="fas fa-folder-open"></i> Load Note
+                </button>
+                <button class="nav-btn" id="btnExportNote">
+                    <i class="fas fa-file-export"></i> Export Note
+                </button>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <h3 class="section-title">Security</h3>
+            <div class="nav-buttons">
+                <button class="nav-btn" id="btnEncryptNote">
+                    <i class="fas fa-lock"></i> Encrypt Note
+                </button>
+                <button class="nav-btn" id="btnDecryptNote" disabled>
+                    <i class="fas fa-unlock"></i> Decrypt Note
+                    <span class="status-badge" id="encryptionStatus">🔓</span>
+                </button>
+                <button class="nav-btn" id="btnPasswordGenerator">
+                    <i class="fas fa-key"></i> Password Generator
+                </button>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <h3 class="section-title">Tools</h3>
+            <div class="nav-buttons">
+                <button class="nav-btn" id="btnCopy">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+                <button class="nav-btn" id="btnClear">
+                    <i class="fas fa-broom"></i> Clear Note
+                </button>
+                <button class="nav-btn" id="btnWordCount">
+                    <i class="fas fa-font"></i> Word Count
+                </button>
+                <button class="nav-btn" id="btnSettings">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="note-title" id="noteTitle" contenteditable="true">Untitled Note</div>
+            <div class="quick-actions">
+                <button class="action-btn" id="btnQuickSave" title="Save (Ctrl+S)">
+                    <i class="fas fa-save"></i>
+                </button>
+                <button class="action-btn" id="btnQuickEncrypt" title="Encrypt (Ctrl+E)">
+                    <i class="fas fa-lock"></i>
+                </button>
+                <button class="action-btn" id="btnQuickDecrypt" title="Decrypt (Ctrl+D)" disabled>
+                    <i class="fas fa-unlock"></i>
+                </button>
+                <button class="action-btn" id="btnPrint" title="Print Note">
+                    <i class="fas fa-print"></i>
+                </button>
+                <button class="action-btn" id="btnFullscreen" title="Toggle Fullscreen">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="formatting-toolbar">
+            <button class="format-btn" id="btnBold" title="Bold (Ctrl+B)"><i class="fas fa-bold"></i></button>
+            <button class="format-btn" id="btnItalic" title="Italic (Ctrl+I)"><i class="fas fa-italic"></i></button>
+            <button class="format-btn" id="btnUnderline" title="Underline (Ctrl+U)"><i class="fas fa-underline"></i></button>
+            <button class="format-btn" id="btnListUl" title="Bullet List"><i class="fas fa-list-ul"></i></button>
+            <button class="format-btn" id="btnListOl" title="Numbered List"><i class="fas fa-list-ol"></i></button>
+            <button class="format-btn" id="btnLink" title="Insert Link"><i class="fas fa-link"></i></button>
+            <button class="format-btn" id="btnCode" title="Code Block"><i class="fas fa-code"></i></button>
+            <button class="format-btn" id="btnQuote" title="Blockquote"><i class="fas fa-quote-right"></i></button>
+        </div>
+
+        <div class="editor-container">
+            <textarea id="editor" placeholder="Start typing your note here..."></textarea>
+            <div id="encryptedContent" class="encrypted-content" style="display: none;"></div>
+        </div>
+
+        <div class="editor-tools">
+            <button class="btn btn-success" id="btnSave">
+                <i class="fas fa-save"></i> Save
+            </button>
+            <button class="btn btn-secondary" id="btnEncrypt">
+                <i class="fas fa-lock"></i> Encrypt
+            </button>
+            <button class="btn btn-secondary" id="btnDecrypt" disabled>
+                <i class="fas fa-unlock"></i> Decrypt
+            </button>
+            <button class="btn btn-secondary" id="btnLoad">
+                <i class="fas fa-folder-open"></i> Load
+            </button>
+            <button class="btn btn-secondary" id="btnExport">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+
+        <div class="status-bar">
+            <div class="status" id="status">Ready. Notes are saved directly to your device.</div>
+            <div class="document-info">
+                <span id="charCount">0 characters</span> • <span id="wordCount">0 words</span> • <span id="lineCount">0 lines</span>
             </div>
         </div>
     </div>
 
     <!-- Hidden file input for loading notes -->
-    <input type="file" id="fileInput" accept=".txt" style="display: none;" />
+    <input type="file" id="fileInput" accept=".txt,.json" style="display: none;" />
 
     <!-- Encryption Modal -->
     <div class="modal" id="encryptModal">
         <div class="modal-content">
-            <h3 class="modal-title">🔒 Encrypt Note</h3>
-            <div class="col">
-                <label for="encryptPassword">Password</label>
-                <div class="password-wrapper">
-                    <input id="encryptPassword" type="password" placeholder="Enter a strong password" autocomplete="new-password" />
-                    <button class="toggle-password" type="button" aria-label="Show password">
-                        <svg class="eye-icon" viewBox="0 0 24 24" width="20" height="20">
-                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                        </svg>
-                    </button>
+            <h3 class="modal-title"><i class="fas fa-lock"></i> Encrypt Note</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="encryptPassword">Password</label>
+                    <div class="password-wrapper">
+                        <input id="encryptPassword" type="password" placeholder="Enter a strong password" autocomplete="new-password" />
+                        <button class="toggle-password" type="button" aria-label="Show password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <label for="encryptArgonPreset">Encryption Strength</label>
-                <select id="encryptArgonPreset">
-                    <option value="interactive">Interactive (faster)</option>
-                    <option value="moderate" selected>Moderate (balanced)</option>
-                    <option value="sensitive">Sensitive (stronger)</option>
-                </select>
-                <div class="param-info" id="encryptParamInfo">Time: 3, Memory: 512MB, Parallelism: 1</div>
+                <div class="form-group">
+                    <label for="encryptHint">Password Hint (optional)</label>
+                    <input id="encryptHint" type="text" placeholder="e.g. My pet's name" />
+                </div>
+
+                <div class="form-group">
+                    <label for="encryptArgonPreset">Encryption Strength</label>
+                    <select id="encryptArgonPreset">
+                        <option value="interactive">Interactive (faster)</option>
+                        <option value="moderate" selected>Moderate (balanced)</option>
+                        <option value="sensitive">Sensitive (stronger)</option>
+                    </select>
+                    <div class="param-info" id="encryptParamInfo">Time: 3, Memory: 512MB, Parallelism: 1</div>
+                </div>
 
                 <div class="hint">This password will be required to decrypt the note. Make sure you remember it!</div>
             </div>
             <div class="modal-actions">
-                <button id="btnCancelEncrypt" class="secondary">Cancel</button>
-                <button id="btnConfirmEncrypt" class="success">Encrypt</button>
+                <button id="btnCancelEncrypt" class="btn btn-secondary">Cancel</button>
+                <button id="btnConfirmEncrypt" class="btn btn-success">Encrypt</button>
             </div>
         </div>
     </div>
@@ -508,31 +842,240 @@
     <!-- Decryption Modal -->
     <div class="modal" id="decryptModal">
         <div class="modal-content">
-            <h3 class="modal-title">🔓 Decrypt Note</h3>
-            <div class="col">
-                <label for="decryptPassword">Password</label>
-                <div class="password-wrapper">
-                    <input id="decryptPassword" type="password" placeholder="Enter the note's password" autocomplete="current-password" />
-                    <button class="toggle-password" type="button" aria-label="Show password">
-                        <svg class="eye-icon" viewBox="0 0 24 24" width="20" height="20">
-                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                        </svg>
-                    </button>
+            <h3 class="modal-title"><i class="fas fa-unlock"></i> Decrypt Note</h3>
+            <div class="modal-body">
+                <div id="passwordHint" class="hint" style="display: none; margin-bottom: 15px;"></div>
+
+                <div class="form-group">
+                    <label for="decryptPassword">Password</label>
+                    <div class="password-wrapper">
+                        <input id="decryptPassword" type="password" placeholder="Enter the note's password" autocomplete="current-password" />
+                        <button class="toggle-password" type="button" aria-label="Show password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <label for="decryptArgonPreset">Encryption Strength (if known)</label>
-                <select id="decryptArgonPreset">
-                    <option value="interactive">Interactive (faster)</option>
-                    <option value="moderate" selected>Moderate (balanced)</option>
-                    <option value="sensitive">Sensitive (stronger)</option>
-                </select>
-                <div class="param-info" id="decryptParamInfo">Time: 3, Memory: 512MB, Parallelism: 1</div>
+                <div class="form-group">
+                    <label for="decryptArgonPreset">Encryption Strength (if known)</label>
+                    <select id="decryptArgonPreset">
+                        <option value="interactive">Interactive (faster)</option>
+                        <option value="moderate" selected>Moderate (balanced)</option>
+                        <option value="sensitive">Sensitive (stronger)</option>
+                    </select>
+                    <div class="param-info" id="decryptParamInfo">Time: 3, Memory: 512MB, Parallelism: 1</div>
+                </div>
 
                 <div class="hint">Enter the password used to encrypt this note.</div>
             </div>
             <div class="modal-actions">
-                <button id="btnCancelDecrypt" class="secondary">Cancel</button>
-                <button id="btnConfirmDecrypt" class="success">Decrypt</button>
+                <button id="btnCancelDecrypt" class="btn btn-secondary">Cancel</button>
+                <button id="btnConfirmDecrypt" class="btn btn-success">Decrypt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3 class="modal-title"><i class="fas fa-cog"></i> Settings</h3>
+            <div class="modal-body">
+                <div class="tabs">
+                    <div class="tab active" data-tab="general">General</div>
+                    <div class="tab" data-tab="security">Security</div>
+                    <div class="tab" data-tab="appearance">Appearance</div>
+                </div>
+
+                <div id="generalTab" class="tab-content">
+                    <div class="form-group">
+                        <label for="autoSave">Auto-save</label>
+                        <select id="autoSave">
+                            <option value="off">Off</option>
+                            <option value="1">Every minute</option>
+                            <option value="5" selected>Every 5 minutes</option>
+                            <option value="10">Every 10 minutes</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spellCheck">Spell Check</label>
+                        <select id="spellCheck">
+                            <option value="off">Off</option>
+                            <option value="on" selected>On</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="defaultEncryption">Default Encryption Strength</label>
+                        <select id="defaultEncryption">
+                            <option value="interactive">Interactive (faster)</option>
+                            <option value="moderate" selected>Moderate (balanced)</option>
+                            <option value="sensitive">Sensitive (stronger)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="securityTab" class="tab-content" style="display: none;">
+                    <div class="form-group">
+                        <label for="clearClipboard">Clear Clipboard After</label>
+                        <select id="clearClipboard">
+                            <option value="0">Never</option>
+                            <option value="10">10 seconds</option>
+                            <option value="30" selected>30 seconds</option>
+                            <option value="60">1 minute</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sessionTimeout">Session Timeout</label>
+                        <select id="sessionTimeout">
+                            <option value="0">Never</option>
+                            <option value="5">5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30" selected>30 minutes</option>
+                            <option value="60">1 hour</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="appearanceTab" class="tab-content" style="display: none;">
+                    <div class="form-group">
+                        <label for="theme">Theme</label>
+                        <select id="theme">
+                            <option value="dark" selected>Dark</option>
+                            <option value="light">Light</option>
+                            <option value="system">System Default</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fontSize">Font Size</label>
+                        <select id="fontSize">
+                            <option value="small">Small</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="large">Large</option>
+                            <option value="x-large">X-Large</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fontFamily">Font Family</label>
+                        <select id="fontFamily">
+                            <option value="inter" selected>Inter</option>
+                            <option value="system">System UI</option>
+                            <option value="monospace">Monospace</option>
+                            <option value="serif">Serif</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCancelSettings" class="btn btn-secondary">Cancel</button>
+                <button id="btnSaveSettings" class="btn btn-success">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Generator Modal -->
+    <div class="modal" id="passwordGeneratorModal">
+        <div class="modal-content">
+            <h3 class="modal-title"><i class="fas fa-key"></i> Password Generator</h3>
+            <div class="modal-body">
+                <div class="hint">Generate strong passwords for your encrypted notes.</div>
+
+                <div class="form-group">
+                    <label for="passwordLength">Password Length</label>
+                    <input id="passwordLength" type="number" min="8" max="50" value="16" />
+                </div>
+
+                <div class="form-group">
+                    <label>Character Sets</label>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="includeUppercase" checked />
+                            Include Uppercase Letters (A-Z)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="includeLowercase" checked />
+                            Include Lowercase Letters (a-z)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="includeNumbers" checked />
+                            Include Numbers (0-9)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="includeSymbols" checked />
+                            Include Symbols (!@#$%^&* etc.)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="generatedPassword">Generated Password</label>
+                    <div class="password-wrapper">
+                        <input id="generatedPassword" type="text" readonly />
+                        <button class="toggle-password" type="button" id="copyPasswordBtn" aria-label="Copy password">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div id="passwordStrength" style="margin-top: 8px; font-size: 12px;">
+                        Strength: <span id="strengthValue">-</span>
+                        <div class="strength-meter">
+                            <div id="strengthMeter" class="strength-meter-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="generatePasswordBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-sync-alt"></i> Generate New Password
+                </button>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCancelPasswordGenerator" class="btn btn-secondary">Close</button>
+                <button id="usePasswordBtn" class="btn btn-success">Use This Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Word Count Modal -->
+    <div class="modal" id="wordCountModal">
+        <div class="modal-content">
+            <h3 class="modal-title"><i class="fas fa-font"></i> Document Statistics</h3>
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <h4>Counts</h4>
+                        <p>Words: <span id="statWords">0</span></p>
+                        <p>Characters: <span id="statChars">0</span></p>
+                        <p>Characters (no spaces): <span id="statCharsNoSpaces">0</span></p>
+                        <p>Lines: <span id="statLines">0</span></p>
+                    </div>
+                    <div>
+                        <h4>Reading</h4>
+                        <p>Reading time: <span id="statReadingTime">0</span> min</p>
+                        <p>Speaking time: <span id="statSpeakingTime">0</span> min</p>
+                        <p>Sentences: <span id="statSentences">0</span></p>
+                        <p>Paragraphs: <span id="statParagraphs">0</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCloseWordCount" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteConfirmModal">
+        <div class="modal-content">
+            <h3 class="modal-title"><i class="fas fa-trash"></i> Delete Note</h3>
+            <div class="modal-body">
+                <p>Are you sure you want to delete "<span id="deleteNoteName"></span>"?</p>
+                <p class="hint">This action cannot be undone.</p>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCancelDelete" class="btn btn-secondary">Cancel</button>
+                <button id="btnConfirmDelete" class="btn btn-danger">Delete</button>
             </div>
         </div>
     </div>
@@ -548,15 +1091,49 @@
             const encryptedContent = qs('#encryptedContent');
             const statusEl = qs('#status');
             const encryptionStatus = qs('#encryptionStatus');
-            const btnDecryptNote = qs('#btnDecryptNote');
-            const btnCopy = qs('#btnCopy');
-            const btnClear = qs('#btnClear');
+            const noteTitle = qs('#noteTitle');
+            const charCount = qs('#charCount');
+            const wordCount = qs('#wordCount');
+            const lineCount = qs('#lineCount');
+            const noteList = qs('#noteList');
+            const searchInput = qs('#searchNotes');
 
             // Buttons
             const btnNewNote = qs('#btnNewNote');
             const btnSaveNote = qs('#btnSaveNote');
             const btnEncryptNote = qs('#btnEncryptNote');
+            const btnDecryptNote = qs('#btnDecryptNote');
+            const btnPasswordGenerator = qs('#btnPasswordGenerator');
             const btnLoadNote = qs('#btnLoadNote');
+            const btnExportNote = qs('#btnExportNote');
+            const btnCopy = qs('#btnCopy');
+            const btnClear = qs('#btnClear');
+            const btnWordCount = qs('#btnWordCount');
+            const btnSettings = qs('#btnSettings');
+
+            // Toolbar buttons
+            const btnSave = qs('#btnSave');
+            const btnEncrypt = qs('#btnEncrypt');
+            const btnDecrypt = qs('#btnDecrypt');
+            const btnLoad = qs('#btnLoad');
+            const btnExport = qs('#btnExport');
+
+            // Quick action buttons
+            const btnQuickSave = qs('#btnQuickSave');
+            const btnQuickEncrypt = qs('#btnQuickEncrypt');
+            const btnQuickDecrypt = qs('#btnQuickDecrypt');
+            const btnPrint = qs('#btnPrint');
+            const btnFullscreen = qs('#btnFullscreen');
+
+            // Formatting buttons
+            const btnBold = qs('#btnBold');
+            const btnItalic = qs('#btnItalic');
+            const btnUnderline = qs('#btnUnderline');
+            const btnListUl = qs('#btnListUl');
+            const btnListOl = qs('#btnListOl');
+            const btnLink = qs('#btnLink');
+            const btnCode = qs('#btnCode');
+            const btnQuote = qs('#btnQuote');
 
             // File input
             const fileInput = qs('#fileInput');
@@ -564,18 +1141,60 @@
             // Modals
             const encryptModal = qs('#encryptModal');
             const decryptModal = qs('#decryptModal');
+            const settingsModal = qs('#settingsModal');
+            const passwordGeneratorModal = qs('#passwordGeneratorModal');
+            const wordCountModal = qs('#wordCountModal');
+            const deleteConfirmModal = qs('#deleteConfirmModal');
+
             const btnConfirmEncrypt = qs('#btnConfirmEncrypt');
             const btnCancelEncrypt = qs('#btnCancelEncrypt');
             const btnConfirmDecrypt = qs('#btnConfirmDecrypt');
             const btnCancelDecrypt = qs('#btnCancelDecrypt');
+            const btnSaveSettings = qs('#btnSaveSettings');
+            const btnCancelSettings = qs('#btnCancelSettings');
+            const btnCancelPasswordGenerator = qs('#btnCancelPasswordGenerator');
+            const btnCloseWordCount = qs('#btnCloseWordCount');
+            const btnConfirmDelete = qs('#btnConfirmDelete');
+            const btnCancelDelete = qs('#btnCancelDelete');
+
+            // Password Generator Elements
+            const generatePasswordBtn = qs('#generatePasswordBtn');
+            const copyPasswordBtn = qs('#copyPasswordBtn');
+            const usePasswordBtn = qs('#usePasswordBtn');
+            const generatedPasswordInput = qs('#generatedPassword');
+            // Update strength live when user types or when password is generated
+            generatedPasswordInput.addEventListener("input", () => {
+                updatePasswordStrength(generatedPasswordInput.value);
+            });
 
             // State
             let currentNote = {
+                id: generateId(),
                 content: '',
                 isEncrypted: false,
                 encryptionParams: null,
-                fileHandle: null
+                fileHandle: null,
+                title: 'Untitled Note',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                passwordHint: ''
             };
+
+            let notes = [];
+            let settings = {
+                autoSave: '5',
+                spellCheck: 'on',
+                defaultEncryption: 'moderate',
+                clearClipboard: '30',
+                sessionTimeout: '30',
+                theme: 'dark',
+                fontSize: 'medium',
+                fontFamily: 'inter'
+            };
+
+            let isFullscreen = false;
+            let autoSaveInterval = null;
+            let noteToDelete = null;
 
             // Argon2 parameters
             const argonParams = {
@@ -603,6 +1222,10 @@
             init();
 
             async function init() {
+                // Load settings and notes
+                loadSettings();
+                loadNotes();
+
                 // Set up event listeners
                 setupEventListeners();
 
@@ -621,9 +1244,37 @@
                     console.error(e);
                 }
 
+                // Apply settings
+                applySettings();
+
                 // Update UI
                 updateEditorState();
                 updateParamInfo();
+                updateCounts();
+
+                // Setup auto-save
+                setupAutoSave();
+            }
+
+            function setupEventListeners() {
+                btnSave.addEventListener('click', saveNoteToFile);
+                btnExport.addEventListener('click', exportNote);
+                btnEncrypt.addEventListener('click', showEncryptModal);
+                btnDecrypt.addEventListener('click', showDecryptModal);
+                btnNewNote.addEventListener('click', createNewNote);
+                btnClear.addEventListener('click', clearNote);
+                btnCopy.addEventListener('click', copyToClipboard);
+                btnWordCount.addEventListener('click', showWordCountStats);
+                btnSettings.addEventListener('click', showSettingsModal);
+                btnQuickSave.addEventListener('click', saveNoteToFile);
+                btnQuickEncrypt.addEventListener('click', showEncryptModal);
+                btnQuickDecrypt.addEventListener('click', showDecryptModal);
+                btnPrint.addEventListener('click', printNote);
+                btnFullscreen.addEventListener('click', toggleFullscreen);
+            }
+
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
             }
 
             function setStatus(msg, isWorking = false) {
@@ -631,6 +1282,223 @@
                     statusEl.innerHTML = '<span class="loading"><span class="loader"></span>' + msg + '</span>';
                 } else {
                     statusEl.textContent = msg;
+                }
+            }
+
+            function loadSettings() {
+                const savedSettings = localStorage.getItem('notepadSettings');
+                if (savedSettings) {
+                    try {
+                        settings = {
+                            ...settings,
+                            ...JSON.parse(savedSettings)
+                        };
+                    } catch (e) {
+                        console.error('Error loading settings:', e);
+                    }
+                }
+            }
+
+            function saveSettings() {
+                try {
+                    localStorage.setItem('notepadSettings', JSON.stringify(settings));
+                    return true;
+                } catch (e) {
+                    console.error('Error saving settings:', e);
+                    setStatus('Error saving settings: ' + e.message);
+                    return false;
+                }
+            }
+
+            function applySettings() {
+                // Apply theme
+                document.body.setAttribute('data-theme', settings.theme);
+
+                // Apply font size
+                document.documentElement.style.setProperty('--editor-font-size',
+                    settings.fontSize === 'small' ? '14px' :
+                    settings.fontSize === 'medium' ? '15px' :
+                    settings.fontSize === 'large' ? '16px' : '18px');
+
+                // Apply font family
+                const fontMap = {
+                    'inter': "'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif",
+                    'system': "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif",
+                    'monospace': "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    'serif': "Georgia, serif"
+                };
+                document.documentElement.style.setProperty('--editor-font-family', fontMap[settings.fontFamily]);
+
+                // Apply spell check
+                editor.spellcheck = settings.spellCheck === 'on';
+            }
+
+            function loadNotes() {
+                const savedNotes = localStorage.getItem('notepadNotes');
+                if (savedNotes) {
+                    try {
+                        notes = JSON.parse(savedNotes);
+                        renderNoteList();
+                    } catch (e) {
+                        console.error('Error loading notes:', e);
+                    }
+                }
+            }
+
+            function saveNotes() {
+                try {
+                    localStorage.setItem('notepadNotes', JSON.stringify(notes));
+                    return true;
+                } catch (e) {
+                    console.error('Error saving notes:', e);
+                    setStatus('Error saving notes: ' + e.message);
+                    return false;
+                }
+            }
+
+            function renderNoteList() {
+                noteList.innerHTML = '';
+
+                const searchTerm = searchInput.value.toLowerCase();
+                const filteredNotes = notes.filter(note =>
+                    note.title.toLowerCase().includes(searchTerm) ||
+                    (note.passwordHint && note.passwordHint.toLowerCase().includes(searchTerm))
+                );
+
+                if (filteredNotes.length === 0) {
+                    noteList.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--muted);">No notes found</div>';
+                    return;
+                }
+
+                filteredNotes.forEach(note => {
+                    const noteEl = document.createElement('div');
+                    noteEl.className = `note-item ${note.id === currentNote.id ? 'active' : ''}`;
+                    noteEl.innerHTML = `
+                        <div class="note-item-content">
+                            <div class="note-item-info">
+                                <div class="note-item-name">${note.title}</div>
+                                <div class="note-item-date">${formatDate(note.updatedAt)}</div>
+                            </div>
+                            ${note.isEncrypted ? '<div class="note-item-encrypted"><i class="fas fa-lock"></i></div>' : ''}
+                            <div class="note-item-delete" data-id="${note.id}">
+                                <i class="fas fa-trash"></i>
+                            </div>
+                        </div>
+                    `;
+
+                    noteEl.addEventListener('click', (e) => {
+                        // Don't trigger note loading if clicking the delete button
+                        if (!e.target.closest('.note-item-delete')) {
+                            loadNoteById(note.id);
+                        }
+                    });
+
+                    // Add delete button event listener
+                    const deleteBtn = noteEl.querySelector('.note-item-delete');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDeleteConfirm(note);
+                    });
+
+                    noteList.appendChild(noteEl);
+                });
+            }
+
+            function formatDate(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffTime = Math.abs(now - date);
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 0) {
+                    return 'Today';
+                } else if (diffDays === 1) {
+                    return 'Yesterday';
+                } else if (diffDays < 7) {
+                    return `${diffDays} days ago`;
+                } else {
+                    return date.toLocaleDateString();
+                }
+            }
+
+            function updateCounts() {
+                const text = currentNote.isEncrypted ? currentNote.content : editor.value;
+                const charCountValue = text.length;
+                const wordCountValue = text.trim() ? text.trim().split(/\s+/).length : 0;
+                const lineCountValue = text.split('\n').length;
+
+                charCount.textContent = `${charCountValue} characters`;
+                wordCount.textContent = `${wordCountValue} words`;
+                lineCount.textContent = `${lineCountValue} lines`;
+            }
+
+            function calculateWordCountStats(text) {
+                // Remove extra whitespace and split into words
+                const words = text.trim() ? text.trim().split(/\s+/) : [];
+                const wordCount = words.length;
+
+                // Character counts
+                const charCount = text.length;
+                const charCountNoSpaces = text.replace(/\s+/g, '').length;
+
+                // Line count
+                const lineCount = text.split('\n').length;
+
+                // Sentence count (approximate)
+                const sentenceCount = text.split(/[.!?]+/).filter(s => s.length > 0).length;
+
+                // Paragraph count
+                const paragraphCount = text.split(/\n\s*\n/).filter(p => p.length > 0).length;
+
+                // Reading time (assuming 225 words per minute)
+                const readingTime = Math.ceil(wordCount / 225);
+
+                // Speaking time (assuming 150 words per minute)
+                const speakingTime = Math.ceil(wordCount / 150);
+
+                return {
+                    words: wordCount,
+                    characters: charCount,
+                    charactersNoSpaces: charCountNoSpaces,
+                    lines: lineCount,
+                    sentences: sentenceCount,
+                    paragraphs: paragraphCount,
+                    readingTime: readingTime,
+                    speakingTime: speakingTime
+                };
+            }
+
+            function showWordCountStats() {
+                const text = currentNote.isEncrypted ? currentNote.content : editor.value;
+                const stats = calculateWordCountStats(text);
+
+                document.getElementById('statWords').textContent = stats.words;
+                document.getElementById('statChars').textContent = stats.characters;
+                document.getElementById('statCharsNoSpaces').textContent = stats.charactersNoSpaces;
+                document.getElementById('statLines').textContent = stats.lines;
+                document.getElementById('statSentences').textContent = stats.sentences;
+                document.getElementById('statParagraphs').textContent = stats.paragraphs;
+                document.getElementById('statReadingTime').textContent = stats.readingTime;
+                document.getElementById('statSpeakingTime').textContent = stats.speakingTime;
+
+                wordCountModal.classList.add('active');
+            }
+
+            function setupAutoSave() {
+                if (autoSaveInterval) {
+                    clearInterval(autoSaveInterval);
+                }
+
+                if (settings.autoSave !== 'off') {
+                    const interval = parseInt(settings.autoSave) * 60 * 1000;
+                    autoSaveInterval = setInterval(() => {
+                        if (!currentNote.isEncrypted) {
+                            currentNote.content = editor.value;
+                            currentNote.updatedAt = Date.now();
+                            saveCurrentNote();
+                            setStatus('Note auto-saved.');
+                        }
+                    }, interval);
                 }
             }
 
@@ -659,40 +1527,103 @@
                     encryptedContent.style.display = 'block';
                     encryptedContent.textContent = currentNote.content;
                     editor.readOnly = true;
-                    encryptionStatus.textContent = '🔒 Encrypted';
+                    encryptionStatus.textContent = '🔒';
                     encryptionStatus.style.color = 'var(--accent)';
                     btnDecryptNote.disabled = false;
+                    btnDecrypt.disabled = false;
+                    btnQuickDecrypt.disabled = false;
                 } else {
                     editor.style.display = 'block';
                     encryptedContent.style.display = 'none';
                     editor.value = currentNote.content;
                     editor.readOnly = false;
-                    encryptionStatus.textContent = '🔓 Not encrypted';
+                    encryptionStatus.textContent = '🔓';
                     encryptionStatus.style.color = 'var(--muted)';
                     btnDecryptNote.disabled = !isLikelyEncrypted(currentNote.content);
+                    btnDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
+                    btnQuickDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
                 }
 
                 btnEncryptNote.disabled = encrypted;
+                btnEncrypt.disabled = encrypted;
+                btnQuickEncrypt.disabled = encrypted;
+
+                noteTitle.textContent = currentNote.title;
+
+                // Update note list highlighting
+                document.querySelectorAll('.note-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                const currentNoteItem = Array.from(document.querySelectorAll('.note-item')).find(item =>
+                    item.querySelector('.note-item-name').textContent === currentNote.title
+                );
+
+                if (currentNoteItem) {
+                    currentNoteItem.classList.add('active');
+                }
             }
 
             function updateParamInfo() {
-                const encryptPreset = encryptArgonPreset.value;
-                encryptParamInfo.textContent = argonParams[encryptPreset].desc;
+                const encryptPreset = qs('#encryptArgonPreset').value;
+                qs('#encryptParamInfo').textContent = argonParams[encryptPreset].desc;
 
-                const decryptPreset = decryptArgonPreset.value;
-                decryptParamInfo.textContent = argonParams[decryptPreset].desc;
+                const decryptPreset = qs('#decryptArgonPreset').value;
+                qs('#decryptParamInfo').textContent = argonParams[decryptPreset].desc;
             }
 
             function createNewNote() {
                 currentNote = {
+                    id: generateId(),
                     content: '',
                     isEncrypted: false,
                     encryptionParams: null,
-                    fileHandle: null
+                    fileHandle: null,
+                    title: 'Untitled Note',
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    passwordHint: ''
                 };
+
+                notes.unshift(currentNote);
+                saveNotes();
+                renderNoteList();
+
                 updateEditorState();
+                updateCounts();
                 editor.focus();
                 setStatus('New note created.');
+            }
+
+            function saveCurrentNote() {
+                if (!currentNote.isEncrypted) {
+                    currentNote.content = editor.value;
+                }
+
+                currentNote.updatedAt = Date.now();
+
+                // Update the note in the notes array
+                const index = notes.findIndex(note => note.id === currentNote.id);
+                if (index !== -1) {
+                    notes[index] = currentNote;
+                } else {
+                    notes.unshift(currentNote);
+                }
+
+                saveNotes();
+                renderNoteList();
+            }
+
+            function loadNoteById(noteId) {
+                const note = notes.find(n => n.id === noteId);
+                if (note) {
+                    currentNote = {
+                        ...note
+                    };
+                    updateEditorState();
+                    updateCounts();
+                    setStatus(`Loaded note: ${currentNote.title}`);
+                }
             }
 
             function clearNote() {
@@ -703,6 +1634,7 @@
                 }
                 currentNote.content = '';
                 updateEditorState();
+                updateCounts();
                 editor.focus();
                 setStatus('Note cleared.');
             }
@@ -712,11 +1644,15 @@
                     const textToCopy = currentNote.isEncrypted ? currentNote.content : editor.value;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         setStatus('Copied to clipboard!');
-                        // Show a temporary visual feedback
-                        btnCopy.textContent = 'Copied!';
-                        setTimeout(() => {
-                            btnCopy.textContent = 'Copy';
-                        }, 2000);
+
+                        // Setup clipboard clearing if enabled
+                        if (settings.clearClipboard !== '0') {
+                            setTimeout(() => {
+                                navigator.clipboard.writeText('').then(() => {
+                                    console.log('Clipboard cleared');
+                                });
+                            }, parseInt(settings.clearClipboard) * 1000);
+                        }
                     }).catch(err => {
                         setStatus('Failed to copy: ' + err);
                     });
@@ -770,13 +1706,49 @@
 
                     // Remember the file handle for future saves
                     currentNote.fileHandle = fileHandle;
+                    currentNote.title = fileHandle.name;
 
+                    updateEditorState();
                     setStatus('Note saved to ' + fileHandle.name);
+
+                    // Also save to local storage
+                    saveCurrentNote();
                 } catch (err) {
                     console.error('Error saving file:', err);
                     // Fallback to download if File System Access API is not available
                     fallbackSave();
                 }
+            }
+
+            async function exportNote() {
+                // Update content from editor if not encrypted
+                if (!currentNote.isEncrypted) {
+                    currentNote.content = editor.value;
+                }
+
+                // Create export data
+                const exportData = {
+                    version: '1.0',
+                    exportedAt: new Date().toISOString(),
+                    note: currentNote
+                };
+
+                // Create a blob with the content
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                    type: 'application/json'
+                });
+                const url = URL.createObjectURL(blob);
+
+                // Create a download link
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${getSuggestedFilename()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                setStatus('Note exported as ' + a.download);
             }
 
             function fallbackSave() {
@@ -804,9 +1776,14 @@
                     return currentNote.fileHandle.name;
                 }
 
-                const firstLine = currentNote.content.split('\n')[0].trim().substring(0, 8);
-                const baseName = (firstLine || 'secure_note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                // Always use .txt extension regardless of encryption status
+                // Use the note title first
+                let baseName = (currentNote.title || 'secure_note')
+                    .replace(/[^a-z0-9]/gi, '_') // safe filename
+                    .toLowerCase()
+                    .substring(0, 30); // limit length
+
+                if (!baseName) baseName = 'secure_note';
+
                 return `${baseName}.txt`;
             }
 
@@ -911,11 +1888,12 @@
             }
 
             function showEncryptModal() {
-                encryptPassword.value = '';
-                encryptArgonPreset.value = 'moderate';
+                qs('#encryptPassword').value = '';
+                qs('#encryptHint').value = currentNote.passwordHint || '';
+                qs('#encryptArgonPreset').value = settings.defaultEncryption;
                 updateParamInfo();
                 encryptModal.classList.add('active');
-                encryptPassword.focus();
+                qs('#encryptPassword').focus();
             }
 
             function hideEncryptModal() {
@@ -924,18 +1902,23 @@
 
             async function doEncrypt() {
                 try {
-                    const password = encryptPassword.value;
+                    hideEncryptModal(); // ✅ close modal immediately
+
+                    const password = qs('#encryptPassword').value;
                     if (!password) {
                         alert('Password required');
                         return;
                     }
 
-                    const preset = encryptArgonPreset.value;
+                    const preset = qs('#encryptArgonPreset').value;
                     const content = editor.value;
+                    const passwordHint = qs('#encryptHint').value;
                     const params = {
                         preset,
                         timestamp: Date.now()
                     };
+
+                    setStatus('Encrypting note...', true); // ✅ show progress in main window
 
                     const {
                         encrypted,
@@ -943,14 +1926,16 @@
                     } = await encryptNoteContent(content, password, params);
 
                     currentNote = {
+                        ...currentNote,
                         content: encrypted,
                         isEncrypted: true,
                         encryptionParams,
-                        fileHandle: currentNote.fileHandle
+                        passwordHint,
+                        title: currentNote.title + ' (Encrypted)'
                     };
 
                     updateEditorState();
-                    hideEncryptModal();
+                    saveCurrentNote();
                     setStatus('Note encrypted successfully.');
                 } catch (e) {
                     setStatus('Encryption failed: ' + e.message);
@@ -959,11 +1944,21 @@
             }
 
             function showDecryptModal() {
-                decryptPassword.value = '';
-                decryptArgonPreset.value = 'moderate';
+                qs('#decryptPassword').value = '';
+                qs('#decryptArgonPreset').value = 'moderate';
                 updateParamInfo();
+
+                const passwordHintEl = qs('#passwordHint');
+                if (currentNote.passwordHint) {
+                    passwordHintEl.textContent = `Hint: ${currentNote.passwordHint}`;
+                    passwordHintEl.style.display = 'block';
+                } else {
+                    passwordHintEl.style.display = 'none';
+                }
+
+                decryptModal.style.display = 'flex'; // reset
                 decryptModal.classList.add('active');
-                decryptPassword.focus();
+                qs('#decryptPassword').focus();
             }
 
             function hideDecryptModal() {
@@ -972,28 +1967,35 @@
 
             async function doDecrypt() {
                 try {
-                    const password = decryptPassword.value;
+                    const password = qs('#decryptPassword').value; // capture before hiding
                     if (!password) {
                         alert('Password required');
                         return;
                     }
 
-                    const preset = decryptArgonPreset.value;
+                    // 🔥 force close the modal immediately
+                    decryptModal.classList.remove('active');
+                    decryptModal.style.display = 'none';
+
+                    const preset = qs('#decryptArgonPreset').value;
                     const params = {
                         preset
                     };
 
+                    setStatus('Decrypting note...', true);
+
                     const decryptedContent = await decryptNoteContent(currentNote.content, password, params);
 
                     currentNote = {
+                        ...currentNote,
                         content: decryptedContent,
                         isEncrypted: false,
                         encryptionParams: null,
-                        fileHandle: currentNote.fileHandle
+                        title: currentNote.title.replace(' (Encrypted)', '')
                     };
 
                     updateEditorState();
-                    hideDecryptModal();
+                    saveCurrentNote();
                     setStatus('Note decrypted successfully.');
                 } catch (e) {
                     setStatus('Decryption failed: ' + e.message);
@@ -1001,185 +2003,603 @@
                 }
             }
 
-            function loadNoteFromFile() {
-                fileInput.value = '';
-                fileInput.click();
-            }
-
-            async function handleFileImport(file) {
+            async function loadNoteFromFile() {
                 try {
-                    const content = await file.text();
-                    const isEncrypted = isLikelyEncrypted(content);
+                    // Show file picker
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'Text Files',
+                            accept: {
+                                'text/plain': ['.txt'],
+                                'application/json': ['.json']
+                            }
+                        }]
+                    });
 
-                    if (isEncrypted) {
-                        // Create a new note with imported content
-                        currentNote = {
-                            content: content,
-                            isEncrypted: true,
-                            encryptionParams: {
-                                preset: 'moderate'
-                            },
-                            fileHandle: null
-                        };
-                    } else {
-                        // Check if it's a JSON export from older versions
+                    // Get the file
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+
+                    let noteData = {
+                        content: content,
+                        isEncrypted: isLikelyEncrypted(content),
+                        encryptionParams: null,
+                        fileHandle: fileHandle,
+                        title: file.name,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    };
+
+                    // Check if it's a JSON export
+                    if (file.name.endsWith('.json')) {
                         try {
                             const parsed = JSON.parse(content);
-                            if (parsed && parsed.note) {
-                                currentNote = {
-                                    content: parsed.note.content,
-                                    isEncrypted: parsed.note.isEncrypted || false,
-                                    encryptionParams: parsed.note.encryptionParams || null,
-                                    fileHandle: null
-                                };
-                            } else {
-                                currentNote = {
-                                    content: content,
-                                    isEncrypted: false,
-                                    encryptionParams: null,
-                                    fileHandle: null
+                            if (parsed.note) {
+                                noteData = {
+                                    ...noteData,
+                                    ...parsed.note,
+                                    fileHandle: fileHandle
                                 };
                             }
-                        } catch {
-                            currentNote = {
-                                content: content,
-                                isEncrypted: false,
-                                encryptionParams: null,
-                                fileHandle: null
-                            };
+                        } catch (e) {
+                            console.error('Error parsing JSON file:', e);
                         }
                     }
 
+                    currentNote = noteData;
+
+                    // Add to notes list if not already there
+                    if (!notes.some(n => n.id === currentNote.id)) {
+                        notes.unshift(currentNote);
+                        saveNotes();
+                    }
+
                     updateEditorState();
-                    setStatus('Loaded note: ' + file.name);
-                } catch (e) {
-                    setStatus('Failed to load note: ' + e.message);
-                    console.error(e);
+                    renderNoteList();
+                    setStatus('Note loaded from ' + file.name);
+                } catch (err) {
+                    // User cancelled the open dialog or API not available
+                    if (err.name !== 'AbortError') {
+                        console.error('Error loading file:', err);
+                        setStatus('Error loading file: ' + err.message);
+                    }
                 }
             }
 
-            // Event Listeners
+            function showSettingsModal() {
+                // Set current values
+                qs('#autoSave').value = settings.autoSave;
+                qs('#spellCheck').value = settings.spellCheck;
+                qs('#defaultEncryption').value = settings.defaultEncryption;
+                qs('#clearClipboard').value = settings.clearClipboard;
+                qs('#sessionTimeout').value = settings.sessionTimeout;
+                qs('#theme').value = settings.theme;
+                qs('#fontSize').value = settings.fontSize;
+                qs('#fontFamily').value = settings.fontFamily;
+
+                // Show first tab
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                qs('#generalTab').style.display = 'block';
+
+                settingsModal.classList.add('active');
+            }
+
+            function hideSettingsModal() {
+                settingsModal.classList.remove('active');
+            }
+
+            function saveSettingsFromModal() {
+                settings.autoSave = qs('#autoSave').value;
+                settings.spellCheck = qs('#spellCheck').value;
+                settings.defaultEncryption = qs('#defaultEncryption').value;
+                settings.clearClipboard = qs('#clearClipboard').value;
+                settings.sessionTimeout = qs('#sessionTimeout').value;
+                settings.theme = qs('#theme').value;
+                settings.fontSize = qs('#fontSize').value;
+                settings.fontFamily = qs('#fontFamily').value;
+
+                if (saveSettings()) {
+                    applySettings();
+                    setupAutoSave();
+                    hideSettingsModal();
+                    setStatus('Settings saved successfully.');
+                }
+            }
+
+            function showPasswordGenerator() {
+                passwordGeneratorModal.classList.add('active');
+                generateNewPassword();
+            }
+
+            function hidePasswordGenerator() {
+                passwordGeneratorModal.classList.remove('active');
+            }
+
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error('Error attempting to enable fullscreen:', err);
+                    });
+                    isFullscreen = true;
+                    btnFullscreen.innerHTML = '<i class="fas fa-compress"></i>';
+                    btnFullscreen.title = 'Exit Fullscreen';
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                        isFullscreen = false;
+                        btnFullscreen.innerHTML = '<i class="fas fa-expand"></i>';
+                        btnFullscreen.title = 'Toggle Fullscreen';
+                    }
+                }
+            }
+
+            function printNote() {
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                    <head>
+                        <title>Print Note: ${currentNote.title}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+                            .note-title { font-size: 24px; margin-bottom: 20px; }
+                            .note-content { white-space: pre-wrap; }
+                            .encrypted-note { font-family: monospace; word-break: break-all; }
+                            @media print {
+                                body { padding: 0; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <h1 class="note-title">${currentNote.title}</h1>
+                        <div class="note-content ${currentNote.isEncrypted ? 'encrypted-note' : ''}">${currentNote.isEncrypted ? currentNote.content : editor.value}</div>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+
+                setTimeout(() => {
+                    printWindow.print();
+                    // printWindow.close(); // Uncomment if you want to automatically close after printing
+                }, 250);
+            }
+
+            function applyTextFormatting(command, value = null) {
+                document.execCommand(command, false, value);
+                editor.focus();
+            }
+
+            // Delete note functionality
+            function showDeleteConfirm(note) {
+                noteToDelete = note;
+                qs('#deleteNoteName').textContent = note.title;
+                deleteConfirmModal.classList.add('active');
+            }
+
+            function hideDeleteConfirm() {
+                deleteConfirmModal.classList.remove('active');
+                noteToDelete = null;
+            }
+
+            function deleteNote() {
+                if (!noteToDelete) return;
+
+                // Remove the note from the array
+                const index = notes.findIndex(note => note.id === noteToDelete.id);
+                if (index !== -1) {
+                    notes.splice(index, 1);
+                }
+
+                // If we're deleting the current note, create a new one
+                if (currentNote.id === noteToDelete.id) {
+                    createNewNote();
+                }
+
+                // Save and update UI
+                saveNotes();
+                renderNoteList();
+                hideDeleteConfirm();
+                setStatus('Note deleted.');
+            }
+
+            // Password Generator Functions
+            function generatePassword(length, options) {
+                const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+                const numbers = '0123456789';
+                const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+                let charset = '';
+                if (options.includeUppercase) charset += uppercase;
+                if (options.includeLowercase) charset += lowercase;
+                if (options.includeNumbers) charset += numbers;
+                if (options.includeSymbols) charset += symbols;
+
+                // Ensure at least one character set is selected
+                if (!charset) {
+                    charset = uppercase + lowercase + numbers + symbols;
+                }
+
+                let password = '';
+                const values = new Uint32Array(length);
+                crypto.getRandomValues(values);
+
+                for (let i = 0; i < length; i++) {
+                    password += charset[values[i] % charset.length];
+                }
+
+                return password;
+            }
+
+            function calculatePasswordStrength(password) {
+                let charsetSize = 0;
+                if (/[a-z]/.test(password)) charsetSize += 26;
+                if (/[A-Z]/.test(password)) charsetSize += 26;
+                if (/[0-9]/.test(password)) charsetSize += 10;
+                if (/[^A-Za-z0-9]/.test(password)) charsetSize += 32;
+
+                if (charsetSize === 0) return {
+                    score: 0,
+                    label: "Very Weak"
+                };
+
+                const entropy = password.length * Math.log2(charsetSize);
+                const guesses = 2 ** entropy;
+                const crackTimeSeconds = guesses / 1e10; // 10B guesses per second
+
+                let score, label;
+                if (crackTimeSeconds < 3600) { // <1 hour
+                    score = 10;
+                    label = "Very Weak";
+                } else if (crackTimeSeconds < 86400) { // <1 day
+                    score = 25;
+                    label = "Weak";
+                } else if (crackTimeSeconds < 2592000) { // <1 month
+                    score = 40;
+                    label = "Fair";
+                } else if (crackTimeSeconds < 31536000) { // <1 year
+                    score = 55;
+                    label = "Okay";
+                } else if (crackTimeSeconds < 315360000) { // <10 years
+                    score = 70;
+                    label = "Good";
+                } else if (crackTimeSeconds < 31536000000) { // <1000 years
+                    score = 85;
+                    label = "Strong";
+                } else if (crackTimeSeconds < 3153600000000) { // <100k years
+                    score = 95;
+                    label = "Very Strong";
+                } else { // beyond human timescale
+                    score = 100;
+                    label = "Uncrackable";
+                }
+
+
+                return {
+                    score,
+                    label
+                };
+            }
+
+
+            function updatePasswordStrength(password) {
+                const strengthValue = document.getElementById("strengthValue");
+                const strengthMeter = document.getElementById("strengthMeter");
+
+                if (!password) {
+                    strengthValue.textContent = "-";
+                    strengthMeter.style.width = "0%";
+                    strengthMeter.style.background = "transparent";
+                    return;
+                }
+
+                // Helper to display crack time nicely
+                function formatCrackTime(seconds) {
+                    if (seconds < 60) return `${seconds.toFixed(0)} seconds`;
+                    if (seconds < 3600) return `${(seconds / 60).toFixed(0)} minutes`;
+                    if (seconds < 86400) return `${(seconds / 3600).toFixed(0)} hours`;
+                    if (seconds < 2592000) return `${(seconds / 86400).toFixed(0)} days`;
+                    if (seconds < 31536000) return `${(seconds / 2592000).toFixed(0)} months`;
+                    if (seconds < 315360000) return `${(seconds / 31536000).toFixed(0)} years`;
+                    if (seconds < 31536000000) return `${(seconds / 315360000).toFixed(0)} centuries`;
+
+                    // Beyond centuries → format big numbers nicely
+                    const millennia = seconds / 31536000000; // 1000 years
+                    return abbreviateNumber(millennia) + " millennia";
+                }
+
+                // helper for big numbers like 6e+105
+                function abbreviateNumber(num) {
+                    if (num < 1e3) return num.toFixed(0);
+                    if (num < 1e6) return (num / 1e3).toFixed(1) + "K";
+                    if (num < 1e9) return (num / 1e6).toFixed(1) + "M";
+                    if (num < 1e12) return (num / 1e9).toFixed(1) + "B";
+                    if (num < 1e15) return (num / 1e12).toFixed(1) + "T";
+
+                    // Beyond trillions → use scientific notation
+                    const exponent = Math.floor(Math.log10(num));
+                    const mantissa = (num / Math.pow(10, exponent)).toFixed(2);
+                    return `${mantissa}e${exponent}`;
+                }
+
+
+
+                // Character set size
+                let charsetSize = 0;
+                if (/[a-z]/.test(password)) charsetSize += 26;
+                if (/[A-Z]/.test(password)) charsetSize += 26;
+                if (/[0-9]/.test(password)) charsetSize += 10;
+                if (/[^A-Za-z0-9]/.test(password)) charsetSize += 32;
+
+                const entropy = password.length * Math.log2(charsetSize || 1);
+                const guesses = 2 ** entropy;
+                const crackTimeSeconds = guesses / 1e10; // assume 10B guesses/sec
+
+                // Strength mapping
+                let score, label;
+                if (crackTimeSeconds < 3600) { // <1 hour
+                    score = 10;
+                    label = "Very Weak";
+                } else if (crackTimeSeconds < 86400) { // <1 day
+                    score = 25;
+                    label = "Weak";
+                } else if (crackTimeSeconds < 2592000) { // <1 month
+                    score = 40;
+                    label = "Fair";
+                } else if (crackTimeSeconds < 31536000) { // <1 year
+                    score = 55;
+                    label = "Okay";
+                } else if (crackTimeSeconds < 315360000) { // <10 years
+                    score = 70;
+                    label = "Good";
+                } else if (crackTimeSeconds < 31536000000) { // <1000 years
+                    score = 85;
+                    label = "Strong";
+                } else if (crackTimeSeconds < 1e20 * 31536000) { // <10^20 years
+                    score = 95;
+                    label = "Very Strong";
+                } else { // absolutely beyond realistic cracking
+                    score = 100;
+                    label = "Uncrackable";
+                }
+
+
+                // Update UI with crack time
+                const crackTimeDisplay = formatCrackTime(crackTimeSeconds);
+                strengthValue.textContent = `${label} (${score}%) ≈ ${crackTimeDisplay}`;
+
+                strengthMeter.style.width = score + "%";
+                strengthMeter.style.background =
+                    score < 30 ? "red" :
+                    score < 50 ? "orange" :
+                    score < 80 ? "yellowgreen" : "green";
+            }
+
+
+            function generateNewPassword() {
+                const length = parseInt(document.getElementById("passwordLength").value);
+                const password = generatePassword(length, {
+                    includeUppercase: document.getElementById("includeUppercase").checked,
+                    includeLowercase: document.getElementById("includeLowercase").checked,
+                    includeNumbers: document.getElementById("includeNumbers").checked,
+                    includeSymbols: document.getElementById("includeSymbols").checked
+                });
+
+                generatedPasswordInput.value = password;
+                updatePasswordStrength(password); // ✅ show strength
+            }
+
+
+            function copyGeneratedPassword() {
+                const password = generatedPasswordInput.value;
+                if (password) {
+                    navigator.clipboard.writeText(password).then(() => {
+                        setStatus('Password copied to clipboard!');
+
+                        // Show visual feedback
+                        const icon = copyPasswordBtn.querySelector('i');
+                        icon.className = 'fas fa-check';
+                        setTimeout(() => {
+                            icon.className = 'fas fa-copy';
+                        }, 2000);
+                    }).catch(err => {
+                        setStatus('Failed to copy password: ' + err);
+                    });
+                }
+            }
+
+            function useGeneratedPassword() {
+                const password = generatedPasswordInput.value;
+                if (password) {
+                    // If encrypt modal is open, populate it with the generated password
+                    if (encryptModal.classList.contains('active')) {
+                        qs('#encryptPassword').value = password;
+                        hidePasswordGenerator();
+                        qs('#encryptPassword').focus();
+                    } else {
+                        // Otherwise, just copy to clipboard
+                        copyGeneratedPassword();
+                        hidePasswordGenerator();
+                    }
+                }
+            }
+
             function setupEventListeners() {
-                // Note actions
+                // Editor events
+                editor.addEventListener('input', () => {
+                    if (!currentNote.isEncrypted) {
+                        currentNote.content = editor.value;
+                        currentNote.updatedAt = Date.now();
+                        saveCurrentNote(); // make sure it's stored in localStorage
+                    }
+                    updateCounts();
+                });
+
+                // Title editing
+                noteTitle.addEventListener('blur', () => {
+                    const newTitle = noteTitle.textContent.trim() || 'Untitled Note';
+                    currentNote.title = newTitle;
+                    currentNote.updatedAt = Date.now();
+                    saveCurrentNote();
+                    renderNoteList();
+                    setStatus('Title updated.');
+                });
+
+                // Search input
+                searchInput.addEventListener('input', renderNoteList);
+
+                // Sidebar navigation buttons
                 btnNewNote.addEventListener('click', createNewNote);
                 btnSaveNote.addEventListener('click', saveNoteToFile);
                 btnEncryptNote.addEventListener('click', showEncryptModal);
                 btnDecryptNote.addEventListener('click', showDecryptModal);
+                btnPasswordGenerator.addEventListener('click', showPasswordGenerator);
                 btnLoadNote.addEventListener('click', loadNoteFromFile);
+                btnExportNote.addEventListener('click', exportNote);
                 btnCopy.addEventListener('click', copyToClipboard);
                 btnClear.addEventListener('click', clearNote);
+                btnWordCount.addEventListener('click', showWordCountStats);
+                btnSettings.addEventListener('click', showSettingsModal);
 
-                // File import
-                fileInput.addEventListener('change', async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        await handleFileImport(file);
-                    }
+                // Toolbar buttons
+                btnSave.addEventListener('click', saveNoteToFile);
+                btnEncrypt.addEventListener('click', showEncryptModal);
+                btnDecrypt.addEventListener('click', showDecryptModal);
+                btnLoad.addEventListener('click', loadNoteFromFile);
+                btnExport.addEventListener('click', exportNote);
+
+                // Quick action buttons
+                btnQuickSave.addEventListener('click', saveNoteToFile);
+                btnQuickEncrypt.addEventListener('click', showEncryptModal);
+                btnQuickDecrypt.addEventListener('click', showDecryptModal);
+                btnPrint.addEventListener('click', printNote);
+                btnFullscreen.addEventListener('click', toggleFullscreen);
+
+                // Formatting buttons
+                btnBold.addEventListener('click', () => applyTextFormatting('bold'));
+                btnItalic.addEventListener('click', () => applyTextFormatting('italic'));
+                btnUnderline.addEventListener('click', () => applyTextFormatting('underline'));
+                btnListUl.addEventListener('click', () => applyTextFormatting('insertUnorderedList'));
+                btnListOl.addEventListener('click', () => applyTextFormatting('insertOrderedList'));
+                btnLink.addEventListener('click', () => {
+                    const url = prompt('Enter URL:', 'https://');
+                    if (url) applyTextFormatting('createLink', url);
+                });
+                btnCode.addEventListener('click', () => {
+                    applyTextFormatting('formatBlock', '<pre>');
+                });
+                btnQuote.addEventListener('click', () => {
+                    applyTextFormatting('formatBlock', '<blockquote>');
                 });
 
-                // Encryption modal
+                // Modal buttons
                 btnConfirmEncrypt.addEventListener('click', doEncrypt);
                 btnCancelEncrypt.addEventListener('click', hideEncryptModal);
-
-                // Decryption modal
                 btnConfirmDecrypt.addEventListener('click', doDecrypt);
                 btnCancelDecrypt.addEventListener('click', hideDecryptModal);
+                btnSaveSettings.addEventListener('click', saveSettingsFromModal);
+                btnCancelSettings.addEventListener('click', hideSettingsModal);
+                btnCancelPasswordGenerator.addEventListener('click', hidePasswordGenerator);
+                btnCloseWordCount.addEventListener('click', () => {
+                    wordCountModal.classList.remove('active');
+                });
+                btnConfirmDelete.addEventListener('click', deleteNote);
+                btnCancelDelete.addEventListener('click', hideDeleteConfirm);
 
-                // Argon2 parameter selection
-                encryptArgonPreset.addEventListener('change', updateParamInfo);
-                decryptArgonPreset.addEventListener('change', updateParamInfo);
+                // Password generator buttons
+                generatePasswordBtn.addEventListener('click', generateNewPassword);
+                copyPasswordBtn.addEventListener('click', copyGeneratedPassword);
+                usePasswordBtn.addEventListener('click', useGeneratedPassword);
 
-                // Password visibility toggle
-                document.querySelectorAll('.toggle-password').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const input = this.previousElementSibling;
-                        const isPassword = input.type === 'password';
-                        input.type = isPassword ? 'text' : 'password';
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        // Remove active class from all tabs
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        // Add active class to clicked tab
+                        tab.classList.add('active');
 
-                        // Update the eye icon
-                        const icon = this.querySelector('.eye-icon');
-                        if (isPassword) {
-                            icon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27M7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
-                        } else {
-                            icon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
-                        }
+                        // Show corresponding tab content
+                        const tabName = tab.getAttribute('data-tab');
+                        document.querySelectorAll('.tab-content').forEach(content => {
+                            content.style.display = 'none';
+                        });
+                        qs(`#${tabName}Tab`).style.display = 'block';
                     });
                 });
 
-                // Auto-save on editor change with debounce
-                let saveTimeout;
-                editor.addEventListener('input', () => {
-                    clearTimeout(saveTimeout);
-                    saveTimeout = setTimeout(() => {
-                        if (!currentNote.isEncrypted) {
-                            currentNote.content = editor.value;
-                            btnDecryptNote.disabled = !isLikelyEncrypted(currentNote.content);
-                        }
-                    }, 1200);
+                // Argon2 preset selectors
+                qs('#encryptArgonPreset').addEventListener('change', updateParamInfo);
+                qs('#decryptArgonPreset').addEventListener('change', updateParamInfo);
+
+                // Password visibility toggles
+                document.querySelectorAll('.toggle-password').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const input = this.parentElement.querySelector('input');
+                        const type = input.type === 'password' ? 'text' : 'password';
+                        input.type = type;
+                        this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+                    });
                 });
 
                 // Keyboard shortcuts
                 document.addEventListener('keydown', (e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                        e.preventDefault();
-                        saveNoteToFile();
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
-                        e.preventDefault();
-                        createNewNote();
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
-                        e.preventDefault();
-                        if (!btnEncryptNote.disabled) showEncryptModal();
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
-                        e.preventDefault();
-                        if (!btnDecryptNote.disabled) showDecryptModal();
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-                        e.preventDefault();
-                        copyToClipboard();
-                    }
-                });
-
-                // Allow pressing Enter in modals to confirm
-                encryptPassword.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') doEncrypt();
-                });
-
-                decryptPassword.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') doDecrypt();
-                });
-
-                // Drag and drop for file import
-                document.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                });
-
-                document.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const file = e.dataTransfer.files[0];
-                    if (file && (file.name.endsWith('.txt') || file.type === 'text/plain')) {
-                        handleFileImport(file);
-                    }
-                });
-
-                /// Header click to clear all input
-                const pageHeader = document.getElementById('pageHeader');
-                pageHeader.addEventListener('click', (e) => {
                     if (e.ctrlKey || e.metaKey) {
-                        // Ctrl+Click or Cmd+Click - open in new tab
-                        window.open(window.location.href, '_blank');
-                    } else {
-                        // Regular click - clear all content
-                        createNewNote();
+                        switch (e.key) {
+                            case 's':
+                                e.preventDefault();
+                                saveNoteToFile();
+                                break;
+                            case 'e':
+                                e.preventDefault();
+                                if (!currentNote.isEncrypted) {
+                                    showEncryptModal();
+                                }
+                                break;
+                            case 'd':
+                                e.preventDefault();
+                                if (currentNote.isEncrypted) {
+                                    showDecryptModal();
+                                }
+                                break;
+                            case 'n':
+                                e.preventDefault();
+                                createNewNote();
+                                break;
+                            case 'b':
+                                e.preventDefault();
+                                applyTextFormatting('bold');
+                                break;
+                            case 'i':
+                                e.preventDefault();
+                                applyTextFormatting('italic');
+                                break;
+                            case 'u':
+                                e.preventDefault();
+                                applyTextFormatting('underline');
+                                break;
+                        }
                     }
                 });
 
-                // Add context menu to show instruction
-                pageHeader.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    alert("Click to clear all content\nCtrl+Click to open new tab");
+                // Click outside modals to close
+                window.addEventListener('click', (e) => {
+                    if (e.target === encryptModal) hideEncryptModal();
+                    if (e.target === decryptModal) hideDecryptModal();
+                    if (e.target === settingsModal) hideSettingsModal();
+                    if (e.target === passwordGeneratorModal) hidePasswordGenerator();
+                    if (e.target === wordCountModal) wordCountModal.classList.remove('active');
+                    if (e.target === deleteConfirmModal) hideDeleteConfirm();
+                });
+
+                // Handle fullscreen change events
+                document.addEventListener('fullscreenchange', () => {
+                    if (!document.fullscreenElement && isFullscreen) {
+                        isFullscreen = false;
+                        btnFullscreen.innerHTML = '<i class="fas fa-expand"></i>';
+                        btnFullscreen.title = 'Toggle Fullscreen';
+                    }
                 });
             }
         })();
