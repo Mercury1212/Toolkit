@@ -11,6 +11,9 @@
 <!-- QR Code library -->
 <script src="qrcode.min.js"></script>
 
+<!-- Google API Client Library -->
+<script src="https://apis.google.com/js/api.js"></script>
+
 <style>
   :root{
     --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#2dd4bf;
@@ -443,6 +446,50 @@
     margin-top: 10px;
   }
   
+  /* Google Drive button style */
+  .google-drive-btn {
+    background: linear-gradient(90deg, #4285f4, #34a853);
+    border: none;
+  }
+  .google-drive-btn:hover {
+    background: linear-gradient(90deg, #5394f5, #45b363);
+  }
+  
+  /* Google Drive file browser */
+  .drive-file-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 15px 0;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.1);
+  }
+  
+  .drive-file-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  
+  .drive-file-item:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  
+  .drive-file-item:last-child {
+    border-bottom: none;
+  }
+  
+  .drive-file-name {
+    font-weight: 500;
+  }
+  
+  .drive-file-modified {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  
   @media (max-width: 600px) {
     body {
       padding: 12px;
@@ -485,6 +532,7 @@
     <div class="controls">
       <button id="btnCreate" class="primary">Create new DB</button>
       <button id="btnLoad">Load DB</button>
+      <button id="btnLoadGoogle" class="google-drive-btn">Load from Google Drive</button>
       <button id="btnSave" disabled>Save DB</button>
       <button id="btnLock" disabled>Lock</button>
     </div>
@@ -549,6 +597,7 @@
   - TOTP using WebCrypto HMAC-SHA1
   - Save/Load via file download/upload
   - CSV Import/Export functionality
+  - Google Drive integration
 */
 
 /* ---------- Utilities ---------- */
@@ -693,110 +742,277 @@ let searchQuery = ''; // Current search query
 let filteredEntries = []; // Filtered entries based on search
 let isAutoSaving = false; // Flag to prevent multiple auto-saves
 
+/* ---------- Google Drive API Integration ---------- */
+const GOOGLE_CLIENT_ID = '592659175056-fpmfmq0bu21rfs14fguhah92jmofo12l.apps.googleusercontent.com'; // Replace with your Google Client ID
+const GOOGLE_API_KEY = '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'; // Replace with your Google API Key
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+let googleAccessToken = null;
+let googleAuthInstance = null;
+
+// Initialize Google API
+function initGoogleAPI() {
+  return new Promise((resolve, reject) => {
+    gapi.load('client:auth2', () => {
+      gapi.client.init({
+        apiKey: GOOGLE_API_KEY,
+        clientId: GOOGLE_CLIENT_ID,
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+        scope: GOOGLE_SCOPES
+      }).then(() => {
+        googleAuthInstance = gapi.auth2.getAuthInstance();
+        resolve();
+      }).catch(reject);
+    });
+  });
+}
+
+// Check if user is signed in to Google
+function isGoogleSignedIn() {
+  return googleAuthInstance && googleAuthInstance.isSignedIn.get();
+}
+
+// Sign in to Google
+async function signInToGoogle() {
+  try {
+    if (!googleAuthInstance) {
+      await initGoogleAPI();
+    }
+    
+    const googleUser = await googleAuthInstance.signIn();
+    googleAccessToken = googleUser.getAuthResponse().access_token;
+    return true;
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    return false;
+  }
+}
+
+// Sign out from Google
+function signOutFromGoogle() {
+  if (googleAuthInstance) {
+    googleAuthInstance.signOut();
+    googleAccessToken = null;
+  }
+}
+
+// Get list of .auth files from Google Drive
+async function getGoogleDriveFiles() {
+  try {
+    const response = await gapi.client.drive.files.list({
+      q: "name contains '.auth' and trashed = false",
+      fields: 'files(id, name, modifiedTime)',
+      orderBy: 'modifiedTime desc'
+    });
+    
+    return response.result.files;
+  } catch (error) {
+    console.error('Error fetching Google Drive files:', error);
+    throw error;
+  }
+}
+
+// Download a file from Google Drive
+async function downloadFromGoogleDrive(fileId) {
+  try {
+    const response = await gapi.client.drive.files.get({
+      fileId: fileId,
+      alt: 'media'
+    });
+    
+    return response.body;
+  } catch (error) {
+    console.error('Error downloading from Google Drive:', error);
+    throw error;
+  }
+}
+
+// Upload a file to Google Drive
+async function uploadToGoogleDrive(filename, content) {
+  try {
+    const fileMetadata = {
+      name: filename,
+      mimeType: 'text/plain'
+    };
+    
+    const media = {
+      mimeType: 'text/plain',
+      body: content
+    };
+    
+    const response = await gapi.client.drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id'
+    });
+    
+    return response.result.id;
+  } catch (error) {
+    console.error('Error uploading to Google Drive:', error);
+    throw error;
+  }
+}
+
+// Show Google Drive file browser
+async function showGoogleDriveFiles() {
+  try {
+    const files = await getGoogleDriveFiles();
+    
+    if (files.length === 0) {
+      showModal(`
+        <h2>Google Drive Files</h2>
+        <p>No .auth files found in your Google Drive.</p>
+        <div class="actions">
+          <button id="driveClose">Close</button>
+        </div>
+      `);
+      
+      modalEl.querySelector('#driveClose').onclick = closeModal;
+      return;
+    }
+    
+    let filesHtml = files.map(file => `
+      <div class="drive-file-item" data-file-id="${file.id}">
+        <div class="drive-file-name">${escapeHtml(file.name)}</div>
+        <div class="drive-file-modified">Modified: ${new Date(file.modifiedTime).toLocaleString()}</div>
+      </div>
+    `).join('');
+    
+    showModal(`
+      <h2>Select a Database File</h2>
+      <p>Choose a file from your Google Drive:</p>
+      <div class="drive-file-list">
+        ${filesHtml}
+      </div>
+      <div class="actions">
+        <button id="driveSignOut">Sign Out</button>
+        <button id="driveClose">Close</button>
+      </div>
+    `);
+    
+    // Add click handlers for file items
+    modalEl.querySelectorAll('.drive-file-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const fileId = item.getAttribute('data-file-id');
+        const fileName = item.querySelector('.drive-file-name').textContent;
+        
+        showModal(`
+          <h2>Unlock Database</h2>
+          <p>Opening: ${escapeHtml(fileName)}</p>
+          <label>Master password</label>
+          <div class="password-container">
+            <input id="drive_pw" type="password" placeholder="Enter master password" />
+          </div>
+          <div class="actions">
+            <button id="driveCancel">Cancel</button>
+            <button id="driveOpen" class="primary">Open</button>
+          </div>
+        `);
+        
+        modalEl.querySelector('#driveCancel').onclick = () => showGoogleDriveFiles();
+        modalEl.querySelector('#driveOpen').onclick = async () => {
+          const pw = modalEl.querySelector('#drive_pw').value;
+          if (!pw) { alert('Password required'); return; }
+          
+          try {
+            const fileContent = await downloadFromGoogleDrive(fileId);
+            await processFileContent(fileContent, pw);
+            closeModal();
+          } catch (error) {
+            console.error('Error processing Google Drive file:', error);
+            alert('Failed to unlock — wrong password or corrupted file.');
+          }
+        };
+      });
+    });
+    
+    modalEl.querySelector('#driveSignOut').onclick = () => {
+      signOutFromGoogle();
+      closeModal();
+    };
+    
+    modalEl.querySelector('#driveClose').onclick = closeModal;
+  } catch (error) {
+    console.error('Error showing Google Drive files:', error);
+    alert('Failed to access Google Drive: ' + error.message);
+  }
+}
+
+// Process file content (common for both local and Google Drive files)
+async function processFileContent(fileContent, password) {
+  let parsed;
+  
+  // Try to parse as Base64 first (new format)
+  try {
+    const jsonString = decodeURIComponent(escape(atob(fileContent)));
+    parsed = JSON.parse(jsonString);
+  } catch (e) {
+    // If Base64 parsing fails, try parsing as JSON directly (old format)
+    try {
+      parsed = JSON.parse(fileContent);
+    } catch (jsonError) {
+      throw new Error('Invalid file format');
+    }
+  }
+  
+  if (!parsed.meta || !parsed.iv || !parsed.ciphertext) {
+    throw new Error('Invalid DB file');
+  }
+  
+  const salt = b64ToU8(parsed.meta.salt);
+  const params = parsed.meta.params;
+  const key = await deriveKeyArgon2(password, salt, params);
+  const iv = b64ToU8(parsed.iv);
+  const ct = b64ToU8(parsed.ciphertext);
+  const pt = await aesGcmDecrypt(key, ct, iv);
+  const obj = JSON.parse(u8ToStr(pt));
+  
+  db = obj;
+  cryptoKey = key;
+  currentFileMeta = parsed.meta;
+  setLockedUI(false);
+  startTotpLoop();
+  alert('Database unlocked.');
+}
+
 /* ---------- DOM ---------- */
 const btnCreate = document.getElementById('btnCreate');
 const btnLoad = document.getElementById('btnLoad');
+const btnLoadGoogle = document.getElementById('btnLoadGoogle');
 const btnSave = document.getElementById('btnSave');
 const btnLock = document.getElementById('btnLock');
 const btnAdd = document.getElementById('btnAdd');
 const btnExportCSV = document.getElementById('btnExportCSV');
 const btnImportCSV = document.getElementById('btnImportCSV');
-const entriesEl = document.getElementById('entries');
-const statusEl = document.getElementById('status');
-const countdownEl = document.getElementById('countdown');
-const countdownBar = document.getElementById('countdownBar');
 const fileInput = document.getElementById('fileInput');
 const csvFileInput = document.getElementById('csvFileInput');
+const statusEl = document.getElementById('status');
+const entriesEl = document.getElementById('entries');
 const modalBackdrop = document.getElementById('modalBackdrop');
 const modalEl = document.getElementById('modal');
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
+const countdownBar = document.getElementById('countdownBar');
+const countdownEl = document.getElementById('countdown');
 
-/* ---------- UI helpers ---------- */
-function showModal(html){
-  modalEl.innerHTML = html;
-  modalBackdrop.style.display = 'flex';
-  
-  // Add peek functionality to password fields
-  setTimeout(() => {
-    const passwordInputs = modalEl.querySelectorAll('input[type="password"]');
-    passwordInputs.forEach(input => {
-      // Create container
-      const container = document.createElement('div');
-      container.className = 'password-container';
-      
-      // Wrap the input
-      input.parentNode.insertBefore(container, input);
-      container.appendChild(input);
-      
-      // Add peek button
-      const peekBtn = document.createElement('button');
-      peekBtn.className = 'peek-btn';
-      peekBtn.innerHTML = '👁';
-      peekBtn.type = 'button';
-      peekBtn.title = 'Show password';
-      
-      peekBtn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        input.type = 'text';
-        peekBtn.innerHTML = '👁‍🗨';
-        peekBtn.title = 'Hide password';
-      });
-      
-      peekBtn.addEventListener('mouseup', (e) => {
-        e.preventDefault();
-        input.type = 'password';
-        peekBtn.innerHTML = '👁';
-        peekBtn.title = 'Show password';
-      });
-      
-      peekBtn.addEventListener('mouseleave', (e) => {
-        input.type = 'password';
-        peekBtn.innerHTML = '👁';
-        peekBtn.title = 'Show password';
-      });
-      
-      // For touch devices
-      peekBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        input.type = 'text';
-        peekBtn.innerHTML = '👁‍🗨';
-        peekBtn.title = 'Hide password';
-      });
-      
-      peekBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        input.type = 'password';
-        peekBtn.innerHTML = '👁';
-        peekBtn.title = 'Show password';
-      });
-      
-      container.appendChild(peekBtn);
-    });
-  }, 10);
-  
-  const fi = modalEl.querySelector('input,textarea,select,button');
-  if(fi) fi.focus();
+/* ---------- UI Helpers ---------- */
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
-function closeModal(){ modalBackdrop.style.display = 'none'; modalEl.innerHTML = ''; }
-
-modalBackdrop.addEventListener('click', (e)=>{
-  if(e.target === modalBackdrop) closeModal();
-});
-
-/* close on Escape */
-window.addEventListener('keydown', (e)=>{
-  if(e.key === 'Escape') closeModal();
-});
-
-/* ---------- App functions ---------- */
-
 function setLockedUI(locked){
+  btnCreate.disabled = !locked;
+  btnLoad.disabled = !locked;
+  btnLoadGoogle.disabled = !locked;
   btnSave.disabled = locked;
-  btnAdd.disabled = locked;
   btnLock.disabled = locked;
+  btnAdd.disabled = locked;
   btnExportCSV.disabled = locked;
   btnImportCSV.disabled = locked;
   searchInput.disabled = locked;
@@ -805,18 +1021,194 @@ function setLockedUI(locked){
   if(locked){
     statusEl.textContent = 'Locked — no database open';
     statusEl.className = 'badge';
-    clearSearch();
+    entriesEl.innerHTML = '';
   } else {
-    statusEl.textContent = `Unlocked — ${db.entries.length} entries`;
+    statusEl.textContent = 'Unlocked';
     statusEl.className = 'badge success';
-    searchInput.disabled = false;
-    searchBtn.disabled = false;
-    btnExportCSV.disabled = false;
-    btnImportCSV.disabled = false;
+    renderEntries();
   }
-  renderEntries();
 }
 
+function showModal(html){
+  modalEl.innerHTML = html;
+  modalBackdrop.style.display = 'flex';
+}
+
+function closeModal(){
+  modalBackdrop.style.display = 'none';
+}
+
+function renderEntries() {
+  const entriesToRender = searchQuery ? filteredEntries : db.entries;
+  
+  if (entriesToRender.length === 0) {
+    entriesEl.innerHTML = searchQuery ? 
+      `<div class="no-results">No entries found for "${escapeHtml(searchQuery)}"</div>` : 
+      `<div class="no-results">No entries yet. Click "Add entry" to get started.</div>`;
+    return;
+  }
+  
+  entriesEl.innerHTML = entriesToRender.map(entry => {
+    const isSelected = selectedId === entry.id;
+    return `
+      <div class="entry ${isSelected ? 'selected' : ''}" data-id="${entry.id}">
+        <div class="meta">
+          <div>
+            <div>${escapeHtml(entry.label)}</div>
+            <div class="small muted">${escapeHtml(entry.issuer || 'No issuer')}</div>
+          </div>
+        </div>
+        <div class="totp" id="totp-${entry.id}">------</div>
+        <div class="entry-actions">
+          <button class="small" onclick="copyTOTP('${entry.id}')">Copy</button>
+          <button class="small" onclick="editEntry('${entry.id}')">Edit</button>
+          <button class="small danger" onclick="deleteEntry('${entry.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Add click handler for selecting entries
+  entriesEl.querySelectorAll('.entry').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (!e.target.closest('button')) {
+        const id = el.getAttribute('data-id');
+        selectedId = selectedId === id ? null : id;
+        renderEntries();
+      }
+    });
+  });
+  
+  // Update TOTP codes
+  updateAllTOTP();
+}
+
+async function updateAllTOTP(){
+  for(const entry of db.entries){
+    const code = await totpForSecret(entry.secret, entry.period || 30, entry.digits || 6);
+    const el = document.getElementById(`totp-${entry.id}`);
+    if(el) el.textContent = code;
+  }
+}
+
+function startTotpLoop(){
+  if(totpInterval) clearInterval(totpInterval);
+  updateAllTOTP();
+  totpInterval = setInterval(updateAllTOTP, 1000);
+  
+  // Start countdown timer
+  startCountdown();
+}
+
+function startCountdown() {
+  let seconds = 30;
+  
+  function updateCountdown() {
+    const progress = (seconds / 30) * 100;
+    countdownBar.style.width = `${progress}%`;
+    countdownEl.textContent = seconds;
+    
+    seconds--;
+    if (seconds < 0) {
+      seconds = 30;
+    }
+  }
+  
+  // Update immediately and then every second
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}
+
+/* ---------- Entry Management ---------- */
+function addEntry(entry){
+  entry.id = 'id' + Math.random().toString(16).slice(2);
+  db.entries.push(entry);
+  renderEntries();
+  autoSave();
+}
+
+function editEntry(id){
+  const entry = db.entries.find(e => e.id === id);
+  if(!entry) return;
+  
+  showModal(`
+    <h2>Edit Entry</h2>
+    <label>Label (e.g., username)</label>
+    <input id="edit_label" type="text" value="${escapeHtml(entry.label)}" />
+    <label>Issuer (e.g., Google)</label>
+    <input id="edit_issuer" type="text" value="${escapeHtml(entry.issuer || '')}" />
+    <label>Secret (Base32)</label>
+    <input id="edit_secret" type="text" value="${escapeHtml(entry.secret)}" />
+    <div class="help">The secret key in Base32 format (without spaces)</div>
+    <div class="row">
+      <div>
+        <label>Digits</label>
+        <select id="edit_digits">
+          <option value="6" ${entry.digits === 6 ? 'selected' : ''}>6</option>
+          <option value="8" ${entry.digits === 8 ? 'selected' : ''}>8</option>
+        </select>
+      </div>
+      <div>
+        <label>Period (seconds)</label>
+        <select id="edit_period">
+          <option value="30" ${entry.period === 30 ? 'selected' : ''}>30</option>
+          <option value="60" ${entry.period === 60 ? 'selected' : ''}>60</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="editCancel">Cancel</button>
+      <button id="editSave" class="primary">Save</button>
+    </div>
+  `);
+  
+  modalEl.querySelector('#editCancel').onclick = closeModal;
+  modalEl.querySelector('#editSave').onclick = () => {
+    const label = modalEl.querySelector('#edit_label').value.trim();
+    const issuer = modalEl.querySelector('#edit_issuer').value.trim();
+    const secret = modalEl.querySelector('#edit_secret').value.trim().replace(/\s+/g, '');
+    const digits = parseInt(modalEl.querySelector('#edit_digits').value);
+    const period = parseInt(modalEl.querySelector('#edit_period').value);
+    
+    if(!label || !secret) { alert('Label and secret are required'); return; }
+    
+    entry.label = label;
+    entry.issuer = issuer;
+    entry.secret = secret;
+    entry.digits = digits;
+    entry.period = period;
+    
+    renderEntries();
+    autoSave();
+    closeModal();
+  };
+}
+
+function deleteEntry(id){
+  if(!confirm('Are you sure you want to delete this entry?')) return;
+  db.entries = db.entries.filter(e => e.id !== id);
+  if(selectedId === id) selectedId = null;
+  renderEntries();
+  autoSave();
+}
+
+async function copyTOTP(id){
+  const entry = db.entries.find(e => e.id === id);
+  if(!entry) return;
+  const code = await totpForSecret(entry.secret, entry.period || 30, entry.digits || 6);
+  try{
+    await navigator.clipboard.writeText(code);
+    // Visual feedback
+    const btn = document.querySelector(`.entry[data-id="${id}"] button`);
+    const origText = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = origText; }, 2000);
+  } catch(err){
+    alert('Failed to copy to clipboard: ' + err);
+  }
+}
+
+/* ---------- Search Functionality ---------- */
 function filterEntries(query) {
   if (!query.trim()) {
     filteredEntries = [...db.entries];
@@ -826,820 +1218,451 @@ function filterEntries(query) {
   const lowerQuery = query.toLowerCase();
   filteredEntries = db.entries.filter(entry => 
     entry.label.toLowerCase().includes(lowerQuery) || 
-    (entry.issuer && entry.issuer.toLowerCase().includes(lowerQuery)) ||
-    entry.secret.toLowerCase().includes(lowerQuery)
+    (entry.issuer && entry.issuer.toLowerCase().includes(lowerQuery))
   );
 }
 
-function renderEntries(){
-  entriesEl.innerHTML = '';
+/* ---------- Database Operations ---------- */
+async function createNewDB(password){
+  if(!password) return;
   
-  // Use filtered entries if search is active, otherwise use all entries
-  const entriesToRender = searchQuery ? filteredEntries : db.entries;
+  // Generate new salt and params
+  const saltBytes = randBytes(16);
+  const params = { time: 3, mem: 65536, parallelism: 1, hashLen: 32 };
   
-  if(!db || !db.entries || db.entries.length === 0){
-    entriesEl.innerHTML = '<div class="muted tiny" style="text-align: center; padding: 40px;">No entries yet. Click "Add entry" to get started.</div>';
-    return;
-  }
-  
-  if(entriesToRender.length === 0){
-    entriesEl.innerHTML = '<div class="no-results">No entries found matching your search.</div>';
-    return;
-  }
-  
-  entriesToRender.forEach((e, idx)=>{
-    // Find the original index in the db.entries array
-    const originalIndex = db.entries.findIndex(entry => 
-      entry.label === e.label && entry.secret === e.secret
-    );
-    
-    const div = document.createElement('div');
-    div.className = 'entry' + (selectedId === originalIndex ? ' selected' : '');
-    
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.innerHTML = `<div>
-      <div style="font-weight:700">${escapeHtml(e.issuer ? e.issuer : e.label)}</div>
-      <div class="small muted">${escapeHtml(e.label)}</div>
-    </div>`;
-    
-    const right = document.createElement('div');
-    right.style.display='flex'; 
-    right.style.gap='12px'; 
-    right.style.alignItems='center';
-    
-    const totpSpan = document.createElement('div');
-    totpSpan.className='totp';
-    totpSpan.textContent = '------';
-    totpSpan.id = 'totp-'+originalIndex;
-    
-    const ctr = document.createElement('div');
-    ctr.className = 'entry-actions';
-    ctr.style.display='flex'; 
-    ctr.style.gap='6px';
-    
-    const btnCopy = document.createElement('button'); 
-    btnCopy.textContent='Copy'; 
-    btnCopy.title='Copy code to clipboard';
-    
-    const btnQR = document.createElement('button');
-    btnQR.textContent = 'QR';
-    btnQR.title = 'Show QR Code';
-    
-    const btnEdit = document.createElement('button'); 
-    btnEdit.textContent='Edit';
-    
-    const btnDel = document.createElement('button'); 
-    btnDel.textContent='Delete'; 
-    btnDel.className = 'danger';
-    
-    // Copy code functionality
-    btnCopy.onclick = async ()=>{
-      const code = await totpForSecret(e.secret, e.period, e.digits);
-      try{
-        await navigator.clipboard.writeText(code);
-        // Visual feedback
-        btnCopy.textContent = '✓ Copied!';
-        btnCopy.classList.add('success');
-        setTimeout(() => {
-          btnCopy.textContent = 'Copy';
-          btnCopy.classList.remove('success');
-        }, 2000);
-      }catch(err){
-        alert('Copy failed — allow clipboard permissions or copy manually: ' + code);
-      }
-    };
-    
-    // QR code functionality
-    btnQR.onclick = () => { showQRCode(e); };
-    
-    btnEdit.onclick = ()=>{ openEditModal(originalIndex); };
-    btnDel.onclick = ()=>{ if(confirm('Delete this entry?')){ 
-      db.entries.splice(originalIndex, 1); 
-      filterEntries(searchQuery);
-      renderEntries(); 
-      setLockedUI(false); 
-    }};
-    
-    ctr.appendChild(btnCopy);
-    ctr.appendChild(btnQR);
-    ctr.appendChild(btnEdit);
-    ctr.appendChild(btnDel);
-    
-    right.appendChild(totpSpan);
-    right.appendChild(ctr);
-    
-    div.appendChild(meta);
-    div.appendChild(right);
-    
-    entriesEl.appendChild(div);
-  });
-}
-
-function clearSearch() {
-  searchQuery = '';
-  searchInput.value = '';
-  filteredEntries = [...db.entries];
-  clearSearchBtn.style.display = 'none';
-  renderEntries();
-}
-
-function performSearch() {
-  searchQuery = searchInput.value;
-  filterEntries(searchQuery);
-  renderEntries();
-  
-  // Show clear button if there's a search query
-  if (searchQuery) {
-    clearSearchBtn.style.display = 'block';
-  } else {
-    clearSearchBtn.style.display = 'none';
+  try{
+    const key = await deriveKeyArgon2(password, saltBytes, params);
+    db = { entries: [] };
+    cryptoKey = key;
+    currentFileMeta = { salt: u8ToB64(saltBytes), params };
+    setLockedUI(false);
+    startTotpLoop();
+    alert('New database created.');
+  } catch(err){
+    console.error('Failed to create DB', err);
+    alert('Failed to create database: ' + err.message);
   }
 }
 
-/* ---------- CSV Import/Export Functions ---------- */
+async function saveDB(){
+  if(!cryptoKey) return;
+  
+  const iv = randBytes(12);
+  const pt = strToU8(JSON.stringify(db));
+  const ct = await aesGcmEncrypt(cryptoKey, pt, iv);
+  
+  const fileData = {
+    meta: currentFileMeta,
+    iv: u8ToB64(iv),
+    ciphertext: u8ToB64(ct)
+  };
+  
+  // Convert to Base64 for saving
+  const jsonString = JSON.stringify(fileData);
+  const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+  
+  return base64Data;
+}
+
+async function autoSave() {
+  if (isAutoSaving) return;
+  isAutoSaving = true;
+  
+  try {
+    const data = await saveDB();
+    localStorage.setItem('lastDatabase', data);
+    console.log('Auto-saved to localStorage');
+  } catch (error) {
+    console.error('Auto-save failed:', error);
+  } finally {
+    isAutoSaving = false;
+  }
+}
+
+async function loadFromLocalStorage() {
+  const data = localStorage.getItem('lastDatabase');
+  if (!data) return false;
+  
+  try {
+    const parsed = JSON.parse(decodeURIComponent(escape(atob(data))));
+    if (!parsed.meta || !parsed.iv || !parsed.ciphertext) {
+      throw new Error('Invalid stored data');
+    }
+    return parsed;
+  } catch (error) {
+    console.error('Failed to load from localStorage:', error);
+    localStorage.removeItem('lastDatabase');
+    return false;
+  }
+}
+
+/* ---------- File Operations ---------- */
+async function downloadFile(filename, content) {
+  const blob = new Blob([content], {type: 'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+/* ---------- CSV Import/Export ---------- */
 function exportToCSV() {
-  if (!db.entries || db.entries.length === 0) {
+  if (db.entries.length === 0) {
     alert('No entries to export');
     return;
   }
   
-  // Create CSV content
-  let csvContent = 'issuer,label,secret,digits,period\n';
+  const headers = ['Label', 'Issuer', 'Secret', 'Digits', 'Period'];
+  const rows = db.entries.map(entry => [
+    entry.label,
+    entry.issuer || '',
+    entry.secret,
+    entry.digits || 6,
+    entry.period || 30
+  ]);
   
-  db.entries.forEach(entry => {
-    const issuer = escapeCSVField(entry.issuer || '');
-    const label = escapeCSVField(entry.label);
-    const secret = escapeCSVField(entry.secret);
-    const digits = entry.digits || 6;
-    const period = entry.period || 30;
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(field => `"${field.replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  
+  const filename = `authenticator-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  downloadFile(filename, csvContent);
+}
+
+function importFromCSV(csvText) {
+  try {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) {
+      throw new Error('CSV file is empty or has no data rows');
+    }
     
-    csvContent += `${issuer},${label},${secret},${digits},${period}\n`;
-  });
-  
-  // Create download link
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
-  
-  link.setAttribute('href', url);
-  link.setAttribute('download', `authenticator-backup-${date}.csv`);
-  link.style.visibility = 'hidden';
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  // Add visual feedback for successful export
-  const btn = document.getElementById('btnExportCSV');
-  const originalText = btn.textContent;
-  btn.textContent = '✓ Exported!';
-  btn.classList.add('success');
-  setTimeout(() => {
-    btn.textContent = originalText;
-    btn.classList.remove('success');
-  }, 2000);
-}
-
-function escapeCSVField(field) {
-  if (field.includes(',') || field.includes('"') || field.includes('\n')) {
-    return `"${field.replace(/"/g, '""')}"`;
-  }
-  return field;
-}
-
-function importFromCSV() {
-  csvFileInput.click();
-}
-
-function handleCSVImport(file) {
-  const reader = new FileReader();
-  
-  reader.onload = function(e) {
-    try {
-      const csvContent = e.target.result;
-      const lines = csvContent.split('\n');
-      const newEntries = [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const expectedHeaders = ['Label', 'Issuer', 'Secret', 'Digits', 'Period'];
+    
+    if (!expectedHeaders.every(h => headers.includes(h))) {
+      throw new Error('Invalid CSV format. Expected headers: ' + expectedHeaders.join(', '));
+    }
+    
+    const newEntries = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      // Skip header row and process each line
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        const values = parseCSVLine(line);
-        if (values.length < 3) continue; // Need at least issuer, label, secret
-        
-        const issuer = values[0] || '';
-        const label = values[1] || '';
-        const secret = values[2].replace(/\s+/g, '').toUpperCase();
-        const digits = parseInt(values[3] || '6', 10);
-        const period = parseInt(values[4] || '30', 10);
-        
-        if (label && secret) {
-          newEntries.push({
-            issuer,
-            label,
-            secret,
-            digits: isNaN(digits) ? 6 : digits,
-            period: isNaN(period) ? 30 : period
-          });
-        }
+      if (values.length !== headers.length) {
+        console.warn(`Skipping row ${i + 1}: incorrect number of values`);
+        continue;
       }
       
-      if (newEntries.length === 0) {
-        alert('No valid entries found in the CSV file');
-        return;
-      }
-      
-      // Show import confirmation modal
-      showModal(`
-        <h2>Import CSV Entries</h2>
-        <p>Found ${newEntries.length} valid entries in the CSV file.</p>
-        <div style="max-height: 200px; overflow-y: auto; margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-          ${newEntries.map(e => `<div class="small">${escapeHtml(e.issuer || e.label)}: ${escapeHtml(e.label)}</div>`).join('')}
-        </div>
-        <label>
-          <input type="checkbox" id="importOverwrite" />
-          Overwrite existing entries with same label
-        </label>
-        <div class="actions">
-          <button id="importCancel">Cancel</button>
-          <button id="importConfirm" class="primary">Import ${newEntries.length} Entries</button>
-        </div>
-      `);
-      
-      modalEl.querySelector('#importCancel').onclick = closeModal;
-      modalEl.querySelector('#importConfirm').onclick = () => {
-        const overwrite = modalEl.querySelector('#importOverwrite').checked;
-        processCSVImport(newEntries, overwrite);
-        closeModal();
+      const entry = {
+        label: values[headers.indexOf('Label')],
+        issuer: values[headers.indexOf('Issuer')],
+        secret: values[headers.indexOf('Secret')].replace(/\s+/g, ''),
+        digits: parseInt(values[headers.indexOf('Digits')]) || 6,
+        period: parseInt(values[headers.indexOf('Period')]) || 30
       };
       
-    } catch (error) {
-      console.error('CSV import error:', error);
-      alert('Failed to parse CSV file: ' + error.message);
+      if (!entry.label || !entry.secret) {
+        console.warn(`Skipping row ${i + 1}: missing label or secret`);
+        continue;
+      }
+      
+      newEntries.push(entry);
     }
-  };
-  
-  reader.onerror = function() {
-    alert('Failed to read the CSV file');
-  };
-  
-  reader.readAsText(file);
-}
-
-function parseCSVLine(line) {
-  const values = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
     
-    if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      values.push(current);
-      current = '';
-    } else {
-      current += char;
+    if (newEntries.length === 0) {
+      throw new Error('No valid entries found in CSV file');
     }
+    
+    // Add new entries to database
+    db.entries = [...db.entries, ...newEntries];
+    renderEntries();
+    autoSave();
+    alert(`Successfully imported ${newEntries.length} entries from CSV`);
+    
+  } catch (error) {
+    console.error('CSV import error:', error);
+    alert('Failed to import CSV: ' + error.message);
   }
-  
-  values.push(current);
-  return values.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
 }
 
-function processCSVImport(newEntries, overwrite) {
-  if (overwrite) {
-    // Remove existing entries with same labels
-    const labelsToImport = new Set(newEntries.map(e => e.label.toLowerCase()));
-    db.entries = db.entries.filter(e => !labelsToImport.has(e.label.toLowerCase()));
-  }
-  
-  // Add new entries
-  db.entries.push(...newEntries);
-  
-  // Update UI
-  setLockedUI(false);
-  renderEntries();
-  
-  alert(`Successfully imported ${newEntries.length} entries`);
-}
-
-/* ---------- Add / Edit ---------- */
-function openAddModal(){
+/* ---------- Event Listeners ---------- */
+btnCreate.onclick = () => {
   showModal(`
-    <h2>Create new entry</h2>
-    <label>Label (account)</label>
-    <input id="m_label" type="text" placeholder="email@example.com" />
-    <label>Issuer (provider)</label>
-    <input id="m_issuer" type="text" placeholder="GitHub, Google, ..."/>
-    <label>Secret (Base32)</label>
-    <input id="m_secret" type="text" placeholder="JBSWY3DPEHPK3PXP"/>
-    <div class="row" style="margin-top:12px">
-      <div>
-        <label>Digits</label>
-        <select id="m_digits"><option>6</option><option>8</option></select>
-      </div>
-      <div>
-        <label>Period (sec)</label>
-        <select id="m_period"><option>30</option><option>60</option></select>
-      </div>
-    </div>
-    <div class="actions">
-      <button id="m_cancel">Cancel</button>
-      <button id="m_save" class="primary">Save</button>
-    </div>
-  `);
-  modalEl.querySelector('#m_cancel').onclick = closeModal;
-  modalEl.querySelector('#m_save').onclick = ()=>{
-    const label = modalEl.querySelector('#m_label').value.trim();
-    const issuer = modalEl.querySelector('#m_issuer').value.trim();
-    const secret = modalEl.querySelector('#m_secret').value.trim().replace(/\s+/g,'').toUpperCase();
-    const digits = parseInt(modalEl.querySelector('#m_digits').value,10);
-    const period = parseInt(modalEl.querySelector('#m_period').value,10);
-    if(!label || !secret){ alert('Label and secret required'); return; }
-    db.entries.push({label, issuer, secret, digits, period});
-    closeModal();
-    setLockedUI(false);
-    // After adding, update search if active
-    if (searchQuery) {
-      filterEntries(searchQuery);
-      renderEntries();
-    }
-  };
-}
-
-function openEditModal(idx){
-  const e = db.entries[idx];
-  showModal(`
-    <h2>Edit entry</h2>
-    <label>Label (account)</label>
-    <input id="m_label" type="text" value="${escapeHtml(e.label)}" />
-    <label>Issuer (provider)</label>
-    <input id="m_issuer" type="text" value="${escapeHtml(e.issuer||'')}" />
-    <label>Secret (Base32)</label>
-    <input id="m_secret" type="text" value="${escapeHtml(e.secret)}"/>
-    <div class="row" style="margin-top:12px">
-      <div>
-        <label>Digits</label>
-        <select id="m_digits"><option${e.digits==6?' selected':''}>6</option><option${e.digits==8?' selected':''}>8</option></select>
-      </div>
-      <div>
-        <label>Period (sec)</label>
-        <select id="m_period"><option${e.period==30?' selected':''}>30</option><option${e.period==60?' selected':''}>60</option></select>
-      </div>
-    </div>
-    <div class="actions">
-      <button id="m_cancel">Cancel</button>
-      <button id="m_save" class="primary">Save</button>
-    </div>
-  `);
-  modalEl.querySelector('#m_cancel').onclick = closeModal;
-  modalEl.querySelector('#m_save').onclick = ()=>{
-    const label = modalEl.querySelector('#m_label').value.trim();
-    const issuer = modalEl.querySelector('#m_issuer').value.trim();
-    const secret = modalEl.querySelector('#m_secret').value.trim().replace(/\s+/g,'').toUpperCase();
-    const digits = parseInt(modalEl.querySelector('#m_digits').value,10);
-    const period = parseInt(modalEl.querySelector('#m_period').value,10);
-    if(!label || !secret){ alert('Label and secret required'); return; }
-    db.entries[idx] = {label, issuer, secret, digits, period};
-    closeModal();
-    setLockedUI(false);
-    // After editing, update search if active
-    if (searchQuery) {
-      filterEntries(searchQuery);
-      renderEntries();
-    }
-  };
-}
-
-/* ---------- Create DB / Lock / Save / Load ---------- */
-
-btnCreate.addEventListener('click', async ()=>{
-  showModal(`
-    <h2>Create new database</h2>
+    <h2>Create New Database</h2>
+    <p>This will create a new encrypted database file.</p>
     <label>Master password</label>
     <div class="password-container">
-      <input id="p1" type="password" placeholder="Enter password" />
+      <input id="new_pw" type="password" placeholder="Enter a strong master password" />
     </div>
     <label>Confirm password</label>
     <div class="password-container">
-      <input id="p2" type="password" placeholder="Confirm password" />
-    </div>
-    <label>Argon2id parameters (you can leave defaults)</label>
-    <div class="row">
-      <div><label>Time (iterations)</label><input id="p_time" type="text" value="3" /></div>
-      <div><label>Memory (KiB)</label><input id="p_mem" type="text" value="65536" /></div>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <div><label>Parallelism</label><input id="p_par" type="text" value="1" /></div>
-      <div><label>HashLen (bytes)</label><input id="p_hashlen" type="text" value="32" /></div>
+      <input id="new_pw2" type="password" placeholder="Confirm your password" />
     </div>
     <div class="actions">
-      <button id="c_cancel">Cancel</button>
-      <button id="c_create" class="primary">Create</button>
+      <button id="createCancel">Cancel</button>
+      <button id="createOK" class="primary">Create</button>
     </div>
   `);
-  modalEl.querySelector('#c_cancel').onclick = closeModal;
-  modalEl.querySelector('#c_create').onclick = async ()=>{
-    const p1 = modalEl.querySelector('#p1').value;
-    const p2 = modalEl.querySelector('#p2').value;
-    if(p1 !== p2){ alert('Passwords do not match'); return; }
-    if(!p1){ alert('Password required'); return; }
-    const params = {
-      time: parseInt(modalEl.querySelector('#p_time').value||'3',10),
-      mem: parseInt(modalEl.querySelector('#p_mem').value||'65536',10),
-      parallelism: parseInt(modalEl.querySelector('#p_par').value||'1',10),
-      hashLen: parseInt(modalEl.querySelector('#p_hashlen').value||'32',10)
-    };
-    const salt = randBytes(16);
-    try{
-      cryptoKey = await deriveKeyArgon2(p1, salt, params);
-    }catch(err){
-      alert('Argon2 derivation failed: '+err);
-      console.error(err);
-      return;
-    }
-    db = { entries: [] , createdAt: new Date().toISOString() };
-    currentFileMeta = { salt: u8ToB64(salt), params, version:1 };
+  
+  modalEl.querySelector('#createCancel').onclick = closeModal;
+  modalEl.querySelector('#createOK').onclick = () => {
+    const pw = modalEl.querySelector('#new_pw').value;
+    const pw2 = modalEl.querySelector('#new_pw2').value;
+    if(!pw) { alert('Password required'); return; }
+    if(pw !== pw2) { alert('Passwords do not match'); return; }
+    createNewDB(pw);
     closeModal();
-    setLockedUI(false);
-    alert('Database created. Please Save DB to a file to store it locally.');
   };
-});
+};
 
-btnAdd.addEventListener('click', ()=> openAddModal());
+btnLoad.onclick = () => {
+  fileInput.click();
+};
 
-btnLock.addEventListener('click', ()=>{
-  if(!cryptoKey){
-    return;
-  }
-  if(confirm('Lock and clear decrypted DB from memory?')){
-    cryptoKey = null;
-    db = { entries: [] };
-    currentFileMeta = null;
-    selectedId = null;
-    setLockedUI(true);
-    if(totpInterval){ clearInterval(totpInterval); totpInterval=null; countdownEl.textContent='--'; }
-  }
-});
-
-btnSave.addEventListener('click', async ()=>{
-  if(!cryptoKey || !currentFileMeta){ alert('No unlocked database to save'); return; }
-  const plaintext = strToU8(JSON.stringify(db));
-  const iv = randBytes(12);
-  try{
-    const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
-    
-    // Create the payload object
-    const payload = {
-      meta: currentFileMeta,
-      iv: u8ToB64(iv),
-      ciphertext: u8ToB64(ct)
-    };
-    
-    // Convert the entire payload to a JSON string and then to Base64
-    const payloadString = JSON.stringify(payload);
-    const payloadBase64 = btoa(unescape(encodeURIComponent(payloadString)));
-    
-    const blob = new Blob([payloadBase64], {type: 'text/plain'});
-    const filename = `authenticator-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
-    
-    // Add visual feedback for successful save
-    const btn = document.getElementById('btnSave');
-    const originalText = btn.textContent;
-    btn.textContent = '✓ Saved!';
-    btn.classList.add('success');
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.classList.remove('success');
-    }, 2000);
-  } catch(err){
-    console.error(err);
-    alert('Encryption failed: '+err);
-  }
-});
-
-btnLoad.addEventListener('click', ()=> fileInput.click());
-
-fileInput.addEventListener('change', async (e)=>{
-  const f = e.target.files[0];
-  if(!f) return;
-  try{
-    const base64Content = await f.text();
-    
-    // Decode the Base64 content back to JSON
-    try {
-      const jsonString = decodeURIComponent(escape(atob(base64Content)));
-      let parsed = JSON.parse(jsonString);
-      
-      if(!parsed.meta || !parsed.iv || !parsed.ciphertext){ 
-        alert('Invalid DB file'); 
-        fileInput.value=''; 
-        return; 
+btnLoadGoogle.onclick = async () => {
+  try {
+    if (!isGoogleSignedIn()) {
+      const signedIn = await signInToGoogle();
+      if (!signedIn) {
+        alert('Google sign-in failed');
+        return;
       }
-      
+    }
+    
+    await showGoogleDriveFiles();
+  } catch (error) {
+    console.error('Google Drive error:', error);
+    alert('Failed to access Google Drive: ' + error.message);
+  }
+};
+
+btnSave.onclick = async () => {
+  try {
+    const data = await saveDB();
+    const filename = `authenticator-backup-${new Date().toISOString().slice(0, 10)}.auth`;
+    downloadFile(filename, data);
+    alert('Database saved successfully.');
+  } catch (error) {
+    console.error('Save failed:', error);
+    alert('Failed to save database: ' + error.message);
+  }
+};
+
+btnLock.onclick = () => {
+  if(!confirm('Lock the database? All data will be encrypted and hidden.')) return;
+  db = { entries: [] };
+  cryptoKey = null;
+  currentFileMeta = null;
+  if(totpInterval) clearInterval(totpInterval);
+  totpInterval = null;
+  selectedId = null;
+  setLockedUI(true);
+  localStorage.removeItem('lastDatabase');
+};
+
+btnAdd.onclick = () => {
+  showModal(`
+    <h2>Add New Entry</h2>
+    <label>Label (e.g., username)</label>
+    <input id="add_label" type="text" placeholder="Example: john.doe@gmail.com" />
+    <label>Issuer (e.g., Google)</label>
+    <input id="add_issuer" type="text" placeholder="Example: Google" />
+    <label>Secret (Base32)</label>
+    <input id="add_secret" type="text" placeholder="Enter the secret key" />
+    <div class="help">The secret key in Base32 format (without spaces). You can also scan a QR code.</div>
+    <div class="row">
+      <div>
+        <label>Digits</label>
+        <select id="add_digits">
+          <option value="6" selected>6</option>
+          <option value="8">8</option>
+        </select>
+      </div>
+      <div>
+        <label>Period (seconds)</label>
+        <select id="add_period">
+          <option value="30" selected>30</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="addCancel">Cancel</button>
+      <button id="addOK" class="primary">Add</button>
+    </div>
+  `);
+  
+  modalEl.querySelector('#addCancel').onclick = closeModal;
+  modalEl.querySelector('#addOK').onclick = () => {
+    const label = modalEl.querySelector('#add_label').value.trim();
+    const issuer = modalEl.querySelector('#add_issuer').value.trim();
+    const secret = modalEl.querySelector('#add_secret').value.trim().replace(/\s+/g, '');
+    const digits = parseInt(modalEl.querySelector('#add_digits').value);
+    const period = parseInt(modalEl.querySelector('#add_period').value);
+    
+    if(!label || !secret) { alert('Label and secret are required'); return; }
+    
+    addEntry({ label, issuer, secret, digits, period });
+    closeModal();
+  };
+};
+
+btnExportCSV.onclick = exportToCSV;
+
+btnImportCSV.onclick = () => {
+  csvFileInput.click();
+};
+
+fileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  
+  showModal(`
+    <h2>Unlock Database</h2>
+    <p>Opening: ${escapeHtml(file.name)}</p>
+    <label>Master password</label>
+    <div class="password-container">
+      <input id="pw" type="password" placeholder="Enter master password" />
+    </div>
+    <div class="actions">
+      <button id="unlockCancel">Cancel</button>
+      <button id="unlockOK" class="primary">Open</button>
+    </div>
+  `);
+  
+  modalEl.querySelector('#unlockCancel').onclick = closeModal;
+  modalEl.querySelector('#unlockOK').onclick = async () => {
+    const pw = modalEl.querySelector('#pw').value;
+    if(!pw) { alert('Password required'); return; }
+    
+    try {
+      const fileContent = await file.text();
+      await processFileContent(fileContent, pw);
+      closeModal();
+    } catch (error) {
+      console.error('Error processing file:', error);
+      alert('Failed to unlock — wrong password or corrupted file.');
+    }
+  };
+  
+  // Reset file input
+  fileInput.value = '';
+};
+
+csvFileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    importFromCSV(event.target.result);
+  };
+  reader.onerror = () => {
+    alert('Failed to read CSV file');
+  };
+  reader.readAsText(file);
+  
+  // Reset file input
+  csvFileInput.value = '';
+};
+
+searchInput.addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  if (searchQuery) {
+    filterEntries(searchQuery);
+    renderEntries();
+    clearSearchBtn.style.display = 'block';
+  } else {
+    clearSearchBtn.style.display = 'none';
+    renderEntries();
+  }
+});
+
+searchBtn.onclick = () => {
+  filterEntries(searchInput.value);
+  renderEntries();
+  if (searchInput.value) {
+    clearSearchBtn.style.display = 'block';
+  }
+};
+
+clearSearchBtn.onclick = () => {
+  searchInput.value = '';
+  searchQuery = '';
+  filterEntries('');
+  renderEntries();
+  clearSearchBtn.style.display = 'none';
+};
+
+// Initialize Google API on load
+document.addEventListener('DOMContentLoaded', () => {
+  // Try to initialize Google API
+  if (typeof gapi !== 'undefined') {
+    initGoogleAPI().catch(err => {
+      console.error('Failed to initialize Google API:', err);
+    });
+  }
+  
+  // Try to load from localStorage
+  loadFromLocalStorage().then(storedData => {
+    if (storedData) {
       showModal(`
-        <h2>Unlock database</h2>
+        <h2>Found Saved Database</h2>
+        <p>Would you like to open the previously saved database?</p>
         <label>Master password</label>
         <div class="password-container">
-          <input id="load_pw" type="password" placeholder="Enter master password" />
+          <input id="saved_pw" type="password" placeholder="Enter master password" />
         </div>
         <div class="actions">
-          <button id="l_cancel">Cancel</button>
-          <button id="l_open" class="primary">Open</button>
+          <button id="savedCancel">Cancel</button>
+          <button id="savedOK" class="primary">Open</button>
         </div>
       `);
       
-      modalEl.querySelector('#l_cancel').onclick = ()=>{
-        fileInput.value='';
-        closeModal();
-      };
-      
-      modalEl.querySelector('#l_open').onclick = async ()=>{
-        const pw = modalEl.querySelector('#load_pw').value;
-        if(!pw){ alert('Password required'); return; }
-        const salt = b64ToU8(parsed.meta.salt);
-        const params = parsed.meta.params;
-        try{
+      modalEl.querySelector('#savedCancel').onclick = closeModal;
+      modalEl.querySelector('#savedOK').onclick = async () => {
+        const pw = modalEl.querySelector('#saved_pw').value;
+        if (!pw) { alert('Password required'); return; }
+        
+        try {
+          const salt = b64ToU8(storedData.meta.salt);
+          const params = storedData.meta.params;
           const key = await deriveKeyArgon2(pw, salt, params);
-          const iv = b64ToU8(parsed.iv);
-          const ct = b64ToU8(parsed.ciphertext);
+          const iv = b64ToU8(storedData.iv);
+          const ct = b64ToU8(storedData.ciphertext);
           const pt = await aesGcmDecrypt(key, ct, iv);
           const obj = JSON.parse(u8ToStr(pt));
+          
           db = obj;
           cryptoKey = key;
-          currentFileMeta = parsed.meta;
-          closeModal();
+          currentFileMeta = storedData.meta;
           setLockedUI(false);
           startTotpLoop();
-          alert('Database unlocked.');
-        }catch(err){
-          console.error(err);
-          alert('Failed to unlock — wrong password or corrupted file.');
-        } finally {
-          fileInput.value='';
+          closeModal();
+          alert('Database unlocked from saved session.');
+        } catch (error) {
+          console.error('Error unlocking saved database:', error);
+          alert('Failed to unlock — wrong password or corrupted data.');
         }
       };
-      
-    } catch (decodeError) {
-      // If Base64 decoding fails, try the old JSON format for backward compatibility
-      try {
-        let parsed = JSON.parse(base64Content);
-        if(!parsed.meta || !parsed.iv || !parsed.ciphertext){ 
-          alert('Invalid DB file'); 
-          fileInput.value=''; 
-          return; 
-        }
-        
-        showModal(`
-          <h2>Unlock database</h2>
-          <label>Master password</label>
-          <div class="password-container">
-            <input id="load_pw" type="password" placeholder="Enter master password" />
-          </div>
-          <div class="actions">
-            <button id="l_cancel">Cancel</button>
-            <button id="l_open" class="primary">Open</button>
-          </div>
-        `);
-        
-        modalEl.querySelector('#l_cancel').onclick = ()=>{
-          fileInput.value='';
-          closeModal();
-        };
-        
-        modalEl.querySelector('#l_open').onclick = async ()=>{
-          const pw = modalEl.querySelector('#load_pw').value;
-          if(!pw){ alert('Password required'); return; }
-          const salt = b64ToU8(parsed.meta.salt);
-          const params = parsed.meta.params;
-          try{
-            const key = await deriveKeyArgon2(pw, salt, params);
-            const iv = b64ToU8(parsed.iv);
-            const ct = b64ToU8(parsed.ciphertext);
-            const pt = await aesGcmDecrypt(key, ct, iv);
-            const obj = JSON.parse(u8ToStr(pt));
-            db = obj;
-            cryptoKey = key;
-            currentFileMeta = parsed.meta;
-            closeModal();
-            setLockedUI(false);
-            startTotpLoop();
-            alert('Database unlocked.');
-          }catch(err){
-            console.error(err);
-            alert('Failed to unlock — wrong password or corrupted file.');
-          } finally {
-            fileInput.value='';
-          }
-        };
-        
-      } catch (jsonError) {
-        alert('Failed to read file: Invalid format');
-        fileInput.value='';
-      }
-    }
-  }catch(err){
-    console.error(err);
-    alert('Failed to load file: '+err);
-    fileInput.value='';
-  }
-});
-
-/* ---------- CSV Import/Export Event Listeners ---------- */
-btnExportCSV.addEventListener('click', exportToCSV);
-btnImportCSV.addEventListener('click', importFromCSV);
-
-csvFileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    handleCSVImport(file);
-  }
-  csvFileInput.value = '';
-});
-
-/* ---------- TOTP loop ---------- */
-function startTotpLoop(){
-  if(totpInterval) clearInterval(totpInterval);
-  totpInterval = setInterval(updateTotps, 1000);
-  updateTotps();
-}
-
-function updateTotps(){
-  if(!db || !db.entries) return;
-  const now = nowUnix();
-  const period = 30;
-  const remaining = period - (now % period);
-  
-  // Update countdown text
-  countdownEl.textContent = remaining;
-  
-  // Update collapsing bar
-  const percentage = (remaining / period) * 100;
-  countdownBar.style.width = percentage + '%';
-  
-  // Change color based on remaining time
-  if (remaining <= 10) {
-    countdownBar.style.background = '#fbbf24'; // warning color
-  } else if (remaining <= 5) {
-    countdownBar.style.background = '#ff6b6b'; // danger color
-  } else {
-    countdownBar.style.background = 'var(--accent)'; // normal color
-  }
-  
-  db.entries.forEach((e, idx)=>{
-    const el = document.getElementById('totp-'+idx);
-    if(!el) return;
-    totpForSecret(e.secret, e.period, e.digits).then(code=>{
-      if(el) el.textContent = code;
-    }).catch(err=>{
-      console.error('TOTP error', err);
-      el.textContent = 'ERROR';
-    });
-  });
-}
-
-/* ---------- Auto-save functionality ---------- */
-function setupAutoSave() {
-  window.addEventListener('beforeunload', async (e) => {
-    if (cryptoKey && currentFileMeta && !isAutoSaving) {
-      isAutoSaving = true;
-
-      e.preventDefault();
-      e.returnValue = 'Your database is being downloaded before reloading...';
-
-      try {
-        // Show downloading modal
-        showModal(`
-          <h2>Downloading Database</h2>
-          <div style="text-align: center; padding: 20px;">
-            <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
-            <p>Your database is being downloaded before the page reloads.</p>
-            <p>Please wait...</p>
-          </div>
-        `);
-
-        await autoSaveDb();
-
-        delete e.returnValue;
-
-        setTimeout(() => {
-          closeModal();
-        }, 500);
-      } catch (err) {
-        console.error('Auto-save failed:', err);
-        delete e.returnValue;
-        closeModal();
-      }
-
-      // ✅ Reset flag if reload was canceled
-      setTimeout(() => {
-        isAutoSaving = false;
-      }, 0);
     }
   });
-}
+});
 
+// Close modal when clicking outside
+modalBackdrop.onclick = (e) => {
+  if(e.target === modalBackdrop) closeModal();
+};
 
-async function autoSaveDb() {
-  if (!cryptoKey || !currentFileMeta) return;
-  
-  try {
-    const plaintext = strToU8(JSON.stringify(db));
-    const iv = randBytes(12);
-    const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
-    
-    // Create the payload object
-    const payload = {
-      meta: currentFileMeta,
-      iv: u8ToB64(iv),
-      ciphertext: u8ToB64(ct)
-    };
-    
-    // Convert the entire payload to a JSON string and then to Base64
-    const payloadString = JSON.stringify(payload);
-    const payloadBase64 = btoa(unescape(encodeURIComponent(payloadString)));
-    
-    const blob = new Blob([payloadBase64], {type: 'text/plain'});
-    const filename = `authenticator-backup-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Wait a moment for the download to start
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Clean up
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    
-    console.log('Database auto-saved successfully');
-  } catch (err) {
-    console.error('Auto-save failed:', err);
-    throw err;
-  }
-}
-
-/* ---------- Init ---------- */
-function escapeHtml(s){ return s ? s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
-
+// Initialize UI
 setLockedUI(true);
-
-// Add ripple effect to all buttons
-document.addEventListener('mousedown', function(e) {
-  const target = e.target.closest('button');
-  if (!target) return;
-  
-  const rect = target.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  
-  const ripple = document.createElement('span');
-  ripple.classList.add('ripple');
-  ripple.style.left = x + 'px';
-  ripple.style.top = y + 'px';
-  target.appendChild(ripple);
-  
-  setTimeout(() => {
-    ripple.remove();
-  }, 600);
-});
-
-// Search functionality
-searchBtn.addEventListener('click', performSearch);
-clearSearchBtn.addEventListener('click', clearSearch);
-
-// Allow pressing Enter to search
-searchInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    performSearch();
-  }
-});
-
-// Enable search when database is unlocked
-setInterval(() => {
-  if (cryptoKey) {
-    searchInput.disabled = false;
-    searchBtn.disabled = false;
-  }
-}, 1000);
-
-// Setup auto-save on page reload
-setupAutoSave();
-
 </script>
 </body>
 </html>
