@@ -1520,49 +1520,43 @@
             }
 
             function updateEditorState() {
-                const encrypted = currentNote.isEncrypted;
+    const encrypted = currentNote.isEncrypted;
 
-                if (encrypted) {
-                    editor.style.display = 'none';
-                    encryptedContent.style.display = 'block';
-                    encryptedContent.textContent = currentNote.content;
-                    editor.readOnly = true;
-                    encryptionStatus.textContent = '🔒';
-                    encryptionStatus.style.color = 'var(--accent)';
-                    btnDecryptNote.disabled = false;
-                    btnDecrypt.disabled = false;
-                    btnQuickDecrypt.disabled = false;
-                } else {
-                    editor.style.display = 'block';
-                    encryptedContent.style.display = 'none';
-                    editor.value = currentNote.content;
-                    editor.readOnly = false;
-                    encryptionStatus.textContent = '🔓';
-                    encryptionStatus.style.color = 'var(--muted)';
-                    btnDecryptNote.disabled = !isLikelyEncrypted(currentNote.content);
-                    btnDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
-                    btnQuickDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
-                }
+    if (encrypted) {
+        editor.style.display = 'none';
+        encryptedContent.style.display = 'block';
+        encryptedContent.textContent = currentNote.content;
+        editor.readOnly = true;
+        encryptionStatus.textContent = '🔒';
+        encryptionStatus.style.color = 'var(--accent)';
+        btnDecryptNote.disabled = false;
+        btnDecrypt.disabled = false;
+        btnQuickDecrypt.disabled = false;
+    } else {
+        editor.style.display = 'block';
+        encryptedContent.style.display = 'none';
+        editor.value = currentNote.content;
+        editor.readOnly = false;
+        encryptionStatus.textContent = '🔓';
+        encryptionStatus.style.color = 'var(--muted)';
+        btnDecryptNote.disabled = !isLikelyEncrypted(currentNote.content);
+        btnDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
+        btnQuickDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
+    }
 
-                btnEncryptNote.disabled = encrypted;
-                btnEncrypt.disabled = encrypted;
-                btnQuickEncrypt.disabled = encrypted;
+    btnEncryptNote.disabled = encrypted;
+    btnEncrypt.disabled = encrypted;
+    btnQuickEncrypt.disabled = encrypted;
 
-                noteTitle.textContent = currentNote.title;
+    noteTitle.textContent = currentNote.title;
 
-                // Update note list highlighting
-                document.querySelectorAll('.note-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-
-                const currentNoteItem = Array.from(document.querySelectorAll('.note-item')).find(item =>
-                    item.querySelector('.note-item-name').textContent === currentNote.title
-                );
-
-                if (currentNoteItem) {
-                    currentNoteItem.classList.add('active');
-                }
-            }
+    // Update note list highlighting - FIXED VERSION
+    document.querySelectorAll('.note-item').forEach(item => {
+        // Get the note ID from the delete button's data-id attribute
+        const noteId = item.querySelector('.note-item-delete').getAttribute('data-id');
+        item.classList.toggle('active', noteId === currentNote.id);
+    });
+}
 
             function updateParamInfo() {
                 const encryptPreset = qs('#encryptArgonPreset').value;
