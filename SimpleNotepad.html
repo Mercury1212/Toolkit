@@ -351,6 +351,8 @@
         .note-item-info {
             flex: 1;
             min-width: 0;
+            overflow: hidden;
+            margin-right: 10px;
         }
 
         .note-item-name {
@@ -446,18 +448,17 @@
             right: 0;
             bottom: 0;
             background: rgba(11, 18, 32, 0.9);
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             z-index: 100;
             opacity: 0;
-            pointer-events: none;
             transition: opacity 0.3s;
         }
 
         .modal.active {
+            display: flex;
             opacity: 1;
-            pointer-events: all;
         }
 
         .modal-content {
@@ -487,6 +488,7 @@
 
         .form-group {
             margin-bottom: 16px;
+            position: relative;
         }
 
         label {
@@ -771,24 +773,6 @@
             <div id="encryptedContent" class="encrypted-content" style="display: none;"></div>
         </div>
 
-        <div class="editor-tools">
-            <button class="btn btn-success" id="btnSave">
-                <i class="fas fa-save"></i> Save
-            </button>
-            <button class="btn btn-secondary" id="btnEncrypt">
-                <i class="fas fa-lock"></i> Encrypt
-            </button>
-            <button class="btn btn-secondary" id="btnDecrypt" disabled>
-                <i class="fas fa-unlock"></i> Decrypt
-            </button>
-            <button class="btn btn-secondary" id="btnLoad">
-                <i class="fas fa-folder-open"></i> Load
-            </button>
-            <button class="btn btn-secondary" id="btnExport">
-                <i class="fas fa-file-export"></i> Export
-            </button>
-        </div>
-
         <div class="status-bar">
             <div class="status" id="status">Ready. Notes are saved directly to your device.</div>
             <div class="document-info">
@@ -808,7 +792,7 @@
                 <div class="form-group">
                     <label for="encryptPassword">Password</label>
                     <div class="password-wrapper">
-                        <input id="encryptPassword" type="password" placeholder="Enter a strong password" autocomplete="new-password" />
+                        <input id="encryptPassword" type="password" placeholder="Enter a strong password" />
                         <button class="toggle-password" type="button" aria-label="Show password">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -999,7 +983,7 @@
                             <input type="checkbox" id="includeLowercase" checked />
                             Include Lowercase Letters (a-z)
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
+                        <label style="display: flex; align-items; center; gap: 8px;">
                             <input type="checkbox" id="includeNumbers" checked />
                             Include Numbers (0-9)
                         </label>
@@ -1014,10 +998,11 @@
                     <label for="generatedPassword">Generated Password</label>
                     <div class="password-wrapper">
                         <input id="generatedPassword" type="text" readonly />
-                        <button class="toggle-password" type="button" id="copyPasswordBtn" aria-label="Copy password">
-                            <i class="fas fa-copy"></i>
+                        <button class="toggle-password" type="button" aria-label="Show password">
+                            <i class="fas fa-eye"></i>
                         </button>
                     </div>
+
                     <div id="passwordStrength" style="margin-top: 8px; font-size: 12px;">
                         Strength: <span id="strengthValue">-</span>
                         <div class="strength-meter">
@@ -1032,7 +1017,7 @@
             </div>
             <div class="modal-actions">
                 <button id="btnCancelPasswordGenerator" class="btn btn-secondary">Close</button>
-                <button id="usePasswordBtn" class="btn btn-success">Use This Password</button>
+                <button id="usePasswordInEncryptBtn" class="btn btn-success">Copy to Clipboard</button>
             </div>
         </div>
     </div>
@@ -1081,7 +1066,7 @@
     </div>
 
     <!-- Load argon2-browser (bundled; exposes window.argon2) -->
-    <script src="argon2-bundled.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/argon2-browser@1.18.0/dist/argon2-bundled.min.js"></script>
 
     <script>
         (async () => {
@@ -1110,13 +1095,6 @@
             const btnClear = qs('#btnClear');
             const btnWordCount = qs('#btnWordCount');
             const btnSettings = qs('#btnSettings');
-
-            // Toolbar buttons
-            const btnSave = qs('#btnSave');
-            const btnEncrypt = qs('#btnEncrypt');
-            const btnDecrypt = qs('#btnDecrypt');
-            const btnLoad = qs('#btnLoad');
-            const btnExport = qs('#btnExport');
 
             // Quick action buttons
             const btnQuickSave = qs('#btnQuickSave');
@@ -1159,13 +1137,8 @@
 
             // Password Generator Elements
             const generatePasswordBtn = qs('#generatePasswordBtn');
-            const copyPasswordBtn = qs('#copyPasswordBtn');
-            const usePasswordBtn = qs('#usePasswordBtn');
+            const usePasswordInEncryptBtn = qs('#usePasswordInEncryptBtn');
             const generatedPasswordInput = qs('#generatedPassword');
-            // Update strength live when user types or when password is generated
-            generatedPasswordInput.addEventListener("input", () => {
-                updatePasswordStrength(generatedPasswordInput.value);
-            });
 
             // State
             let currentNote = {
@@ -1257,20 +1230,198 @@
             }
 
             function setupEventListeners() {
-                btnSave.addEventListener('click', saveNoteToFile);
-                btnExport.addEventListener('click', exportNote);
-                btnEncrypt.addEventListener('click', showEncryptModal);
-                btnDecrypt.addEventListener('click', showDecryptModal);
+                // Editor events
+                editor.addEventListener('input', () => {
+                    const value = editor.value;
+                    currentNote.content = value;
+                    currentNote.updatedAt = Date.now();
+
+                    if (isLikelyEncrypted(value)) {
+                        // If it looks encrypted, treat as encrypted
+                        currentNote.isEncrypted = true;
+
+                        // Hide editor, show encrypted block
+                        editor.style.display = 'none';
+                        encryptedContent.style.display = 'block';
+                        encryptedContent.textContent = value;
+                    } else {
+                        // Otherwise treat as plaintext
+                        currentNote.isEncrypted = false;
+
+                        // Show editor, hide encrypted block
+                        editor.style.display = 'block';
+                        encryptedContent.style.display = 'none';
+                    }
+
+                    saveCurrentNote();
+                    updateCounts();
+                    updateEditorState();
+                });
+
+                // Title editing
+                noteTitle.addEventListener('blur', () => {
+                    const newTitle = noteTitle.textContent.trim() || 'Untitled Note';
+                    currentNote.title = newTitle;
+                    currentNote.updatedAt = Date.now();
+                    saveCurrentNote();
+                    renderNoteList();
+                    setStatus('Title updated.');
+                });
+
+                // Search input
+                searchInput.addEventListener('input', renderNoteList);
+
+                // Sidebar navigation buttons
                 btnNewNote.addEventListener('click', createNewNote);
-                btnClear.addEventListener('click', clearNote);
+                btnSaveNote.addEventListener('click', saveNoteToFile);
+                btnEncryptNote.addEventListener('click', showEncryptModal);
+                btnDecryptNote.addEventListener('click', showDecryptModal);
+                btnPasswordGenerator.addEventListener('click', showPasswordGenerator);
+                btnLoadNote.addEventListener('click', loadNoteFromFile);
+                btnExportNote.addEventListener('click', exportNote);
                 btnCopy.addEventListener('click', copyToClipboard);
+                btnClear.addEventListener('click', clearNote);
                 btnWordCount.addEventListener('click', showWordCountStats);
                 btnSettings.addEventListener('click', showSettingsModal);
+
+                // Quick action buttons
                 btnQuickSave.addEventListener('click', saveNoteToFile);
                 btnQuickEncrypt.addEventListener('click', showEncryptModal);
                 btnQuickDecrypt.addEventListener('click', showDecryptModal);
                 btnPrint.addEventListener('click', printNote);
                 btnFullscreen.addEventListener('click', toggleFullscreen);
+
+                // Formatting buttons
+                btnBold.addEventListener('click', () => applyTextFormatting('bold'));
+                btnItalic.addEventListener('click', () => applyTextFormatting('italic'));
+                btnUnderline.addEventListener('click', () => applyTextFormatting('underline'));
+                btnListUl.addEventListener('click', () => applyTextFormatting('insertUnorderedList'));
+                btnListOl.addEventListener('click', () => applyTextFormatting('insertOrderedList'));
+                btnLink.addEventListener('click', () => {
+                    const url = prompt('Enter URL:', 'https://');
+                    if (url) applyTextFormatting('createLink', url);
+                });
+                btnCode.addEventListener('click', () => {
+                    applyTextFormatting('formatBlock', '<pre>');
+                });
+                btnQuote.addEventListener('click', () => {
+                    applyTextFormatting('formatBlock', '<blockquote>');
+                });
+
+                // Modal buttons
+                btnConfirmEncrypt.addEventListener('click', doEncrypt);
+                btnCancelEncrypt.addEventListener('click', hideEncryptModal);
+                btnConfirmDecrypt.addEventListener('click', doDecrypt);
+                btnCancelDecrypt.addEventListener('click', hideDecryptModal);
+                btnSaveSettings.addEventListener('click', saveSettingsFromModal);
+                btnCancelSettings.addEventListener('click', hideSettingsModal);
+                btnCancelPasswordGenerator.addEventListener('click', hidePasswordGenerator);
+                btnCloseWordCount.addEventListener('click', () => {
+                    hideModal(wordCountModal);
+                });
+                btnConfirmDelete.addEventListener('click', deleteNote);
+                btnCancelDelete.addEventListener('click', hideDeleteConfirm);
+
+                // Password generator buttons
+                generatePasswordBtn.addEventListener('click', generateNewPassword);
+                usePasswordInEncryptBtn.addEventListener('click', copyGeneratedPassword);
+                
+                // Toggle password visibility in password generator
+                document.querySelectorAll('.toggle-password').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const input = this.parentElement.querySelector('input');
+                        const type = input.type === 'password' ? 'text' : 'password';
+                        input.type = type;
+                        this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+                    });
+                });
+
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        // Remove active class from all tabs
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        // Add active class to clicked tab
+                        tab.classList.add('active');
+
+                        // Show corresponding tab content
+                        const tabName = tab.getAttribute('data-tab');
+                        document.querySelectorAll('.tab-content').forEach(content => {
+                            content.style.display = 'none';
+                        });
+                        qs(`#${tabName}Tab`).style.display = 'block';
+                    });
+                });
+
+                // Argon2 preset selectors
+                qs('#encryptArgonPreset').addEventListener('change', updateParamInfo);
+                qs('#decryptArgonPreset').addEventListener('change', updateParamInfo);
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch (e.key) {
+                            case 's':
+                                e.preventDefault();
+                                saveNoteToFile();
+                                break;
+                            case 'e':
+                                e.preventDefault();
+                                if (!currentNote.isEncrypted) {
+                                    showEncryptModal();
+                                }
+                                break;
+                            case 'd':
+                                e.preventDefault();
+                                if (currentNote.isEncrypted) {
+                                    showDecryptModal();
+                                }
+                                break;
+                            case 'n':
+                                e.preventDefault();
+                                createNewNote();
+                                break;
+                            case 'b':
+                                e.preventDefault();
+                                applyTextFormatting('bold');
+                                break;
+                            case 'i':
+                                e.preventDefault();
+                                applyTextFormatting('italic');
+                                break;
+                            case 'u':
+                                e.preventDefault();
+                                applyTextFormatting('underline');
+                                break;
+                        }
+                    }
+                    
+                    // Escape key to close modals
+                    if (e.key === 'Escape') {
+                        const activeModals = document.querySelectorAll('.modal.active');
+                        if (activeModals.length > 0) {
+                            activeModals.forEach(modal => {
+                                hideModal(modal);
+                            });
+                        }
+                    }
+                });
+
+                // Click outside modals to close
+                window.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal')) {
+                        hideModal(e.target);
+                    }
+                });
+
+                // Handle fullscreen change events
+                document.addEventListener('fullscreenchange', () => {
+                    if (!document.fullscreenElement && isFullscreen) {
+                        isFullscreen = false;
+                        btnFullscreen.innerHTML = '<i class="fas fa-expand"></i>';
+                        btnFullscreen.title = 'Toggle Fullscreen';
+                    }
+                });
             }
 
             function generateId() {
@@ -1282,6 +1433,13 @@
                     statusEl.innerHTML = '<span class="loading"><span class="loader"></span>' + msg + '</span>';
                 } else {
                     statusEl.textContent = msg;
+                }
+                
+                // Persist status message in localStorage for session continuity
+                try {
+                    localStorage.setItem('lastStatusMessage', msg);
+                } catch (e) {
+                    console.error('Error saving status message:', e);
                 }
             }
 
@@ -1296,6 +1454,12 @@
                     } catch (e) {
                         console.error('Error loading settings:', e);
                     }
+                }
+                
+                // Load last status message if available
+                const lastStatus = localStorage.getItem('lastStatusMessage');
+                if (lastStatus) {
+                    setStatus(lastStatus);
                 }
             }
 
@@ -1334,25 +1498,30 @@
             }
 
             function loadNotes() {
-                const savedNotes = localStorage.getItem('notepadNotes');
-                if (savedNotes) {
-                    try {
-                        notes = JSON.parse(savedNotes);
-                        renderNoteList();
-                    } catch (e) {
-                        console.error('Error loading notes:', e);
-                    }
+                try {
+                    const savedNotes = localStorage.getItem('notepadNotes');
+                    notes = savedNotes ? JSON.parse(savedNotes) : [];
+                } catch (e) {
+                    console.error('Error loading notes:', e);
+                    notes = [];
+                }
+
+                renderNoteList();
+
+                // 🔥 Always sync currentNote after load
+                if (notes.length > 0) {
+                    currentNote = { ...notes[0] }; // copy first note
+                } else {
+                    currentNote = null; // stay empty until user creates one
                 }
             }
 
             function saveNotes() {
                 try {
                     localStorage.setItem('notepadNotes', JSON.stringify(notes));
-                    return true;
                 } catch (e) {
                     console.error('Error saving notes:', e);
                     setStatus('Error saving notes: ' + e.message);
-                    return false;
                 }
             }
 
@@ -1373,6 +1542,7 @@
                 filteredNotes.forEach(note => {
                     const noteEl = document.createElement('div');
                     noteEl.className = `note-item ${note.id === currentNote.id ? 'active' : ''}`;
+                    noteEl.setAttribute('data-id', note.id);
                     noteEl.innerHTML = `
                         <div class="note-item-content">
                             <div class="note-item-info">
@@ -1385,7 +1555,7 @@
                             </div>
                         </div>
                     `;
-
+                    
                     noteEl.addEventListener('click', (e) => {
                         // Don't trigger note loading if clicking the delete button
                         if (!e.target.closest('.note-item-delete')) {
@@ -1481,7 +1651,7 @@
                 document.getElementById('statReadingTime').textContent = stats.readingTime;
                 document.getElementById('statSpeakingTime').textContent = stats.speakingTime;
 
-                wordCountModal.classList.add('active');
+                showModal(wordCountModal);
             }
 
             function setupAutoSave() {
@@ -1492,71 +1662,92 @@
                 if (settings.autoSave !== 'off') {
                     const interval = parseInt(settings.autoSave) * 60 * 1000;
                     autoSaveInterval = setInterval(() => {
+                        if (!currentNote) return; // nothing to save
+
+                        // Keep plaintext notes synced with editor
                         if (!currentNote.isEncrypted) {
                             currentNote.content = editor.value;
-                            currentNote.updatedAt = Date.now();
-                            saveCurrentNote();
-                            setStatus('Note auto-saved.');
                         }
+
+                        currentNote.updatedAt = Date.now();
+                        saveCurrentNote();
+                        setStatus('Note auto-saved.');
                     }, interval);
                 }
             }
 
             function isLikelyEncrypted(content) {
-                if (!content) return false;
+                if (!content || typeof content !== 'string') return false;
 
+                const trimmed = content.trim();
+                
                 // Check if it looks like our encrypted format (base64 URL-safe)
-                if (/^[A-Za-z0-9\-_]+$/.test(content.trim()) && content.length > 40) {
+                if (/^[A-Za-z0-9\-_]+$/.test(trimmed) && trimmed.length >= 44) { // Minimum length for encrypted data
                     return true;
                 }
 
                 // Check if it's a JSON export from older versions
                 try {
-                    const parsed = JSON.parse(content);
-                    return parsed && parsed.note && parsed.note.isEncrypted;
+                    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                        const parsed = JSON.parse(trimmed);
+                        return parsed && parsed.note && parsed.note.isEncrypted;
+                    }
                 } catch {
-                    return false;
+                    // Not JSON, continue checking
                 }
+
+                // Check for common encrypted data patterns
+                if (trimmed.includes('"encrypted":true') || 
+                    trimmed.includes('"isEncrypted":true') ||
+                    trimmed.includes('"iv":') && trimmed.includes('"salt":')) {
+                    return true;
+                }
+
+                return false;
             }
 
             function updateEditorState() {
-    const encrypted = currentNote.isEncrypted;
+                const encrypted = currentNote.isEncrypted;
+                
+                // Check if content looks encrypted (for pasted content)
+                const contentLooksEncrypted = isLikelyEncrypted(currentNote.content);
+                
+                if (encrypted) {
+                    editor.style.display = 'none';
+                    encryptedContent.style.display = 'block';
+                    encryptedContent.textContent = currentNote.content;
+                    editor.readOnly = true;
+                    encryptionStatus.textContent = '🔒';
+                    encryptionStatus.style.color = 'var(--accent)';
+                    btnDecryptNote.disabled = false;
+                    btnQuickDecrypt.disabled = false;
+                } else {
+                    editor.style.display = 'block';
+                    encryptedContent.style.display = 'none';
+                    editor.value = currentNote.content;
+                    editor.readOnly = false;
+                    encryptionStatus.textContent = '🔓';
+                    encryptionStatus.style.color = 'var(--muted)';
+                    
+                    // Enable decrypt button if content looks encrypted (for pasted content)
+                    btnDecryptNote.disabled = !contentLooksEncrypted;
+                    btnQuickDecrypt.disabled = !contentLooksEncrypted;
+                }
 
-    if (encrypted) {
-        editor.style.display = 'none';
-        encryptedContent.style.display = 'block';
-        encryptedContent.textContent = currentNote.content;
-        editor.readOnly = true;
-        encryptionStatus.textContent = '🔒';
-        encryptionStatus.style.color = 'var(--accent)';
-        btnDecryptNote.disabled = false;
-        btnDecrypt.disabled = false;
-        btnQuickDecrypt.disabled = false;
-    } else {
-        editor.style.display = 'block';
-        encryptedContent.style.display = 'none';
-        editor.value = currentNote.content;
-        editor.readOnly = false;
-        encryptionStatus.textContent = '🔓';
-        encryptionStatus.style.color = 'var(--muted)';
-        btnDecryptNote.disabled = !isLikelyEncrypted(currentNote.content);
-        btnDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
-        btnQuickDecrypt.disabled = !isLikelyEncrypted(currentNote.content);
-    }
+                btnEncryptNote.disabled = encrypted;
+                btnQuickEncrypt.disabled = encrypted;
 
-    btnEncryptNote.disabled = encrypted;
-    btnEncrypt.disabled = encrypted;
-    btnQuickEncrypt.disabled = encrypted;
+                noteTitle.textContent = currentNote.title;
 
-    noteTitle.textContent = currentNote.title;
+                // Update note list highlighting
+                document.querySelectorAll('.note-item').forEach(item => {
+                    const noteId = item.getAttribute('data-id');
+                    item.classList.toggle('active', noteId === currentNote.id);
+                });
 
-    // Update note list highlighting - FIXED VERSION
-    document.querySelectorAll('.note-item').forEach(item => {
-        // Get the note ID from the delete button's data-id attribute
-        const noteId = item.querySelector('.note-item-delete').getAttribute('data-id');
-        item.classList.toggle('active', noteId === currentNote.id);
-    });
-}
+                renderNoteList();
+                updateCounts();
+            }
 
             function updateParamInfo() {
                 const encryptPreset = qs('#encryptArgonPreset').value;
@@ -1590,30 +1781,24 @@
             }
 
             function saveCurrentNote() {
-                if (!currentNote.isEncrypted) {
-                    currentNote.content = editor.value;
-                }
-
                 currentNote.updatedAt = Date.now();
 
-                // Update the note in the notes array
+                const noteCopy = { ...currentNote }; // clone snapshot
+
                 const index = notes.findIndex(note => note.id === currentNote.id);
                 if (index !== -1) {
-                    notes[index] = currentNote;
+                    notes[index] = noteCopy;
                 } else {
-                    notes.unshift(currentNote);
+                    notes.unshift(noteCopy);
                 }
 
                 saveNotes();
-                renderNoteList();
             }
 
             function loadNoteById(noteId) {
                 const note = notes.find(n => n.id === noteId);
                 if (note) {
-                    currentNote = {
-                        ...note
-                    };
+                    currentNote = { ...note };
                     updateEditorState();
                     updateCounts();
                     setStatus(`Loaded note: ${currentNote.title}`);
@@ -1881,23 +2066,36 @@
                 return new TextDecoder().decode(pt);
             }
 
+            // Unified modal management functions
+            function hideModal(modal) {
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    if (!modal.classList.contains('active')) {
+                        modal.style.display = 'none';
+                    }
+                }, 300); // match your CSS transition
+            }
+
+            function showModal(modal) {
+                modal.style.display = 'flex';
+                requestAnimationFrame(() => modal.classList.add('active'));
+            }
+
             function showEncryptModal() {
                 qs('#encryptPassword').value = '';
                 qs('#encryptHint').value = currentNote.passwordHint || '';
                 qs('#encryptArgonPreset').value = settings.defaultEncryption;
                 updateParamInfo();
-                encryptModal.classList.add('active');
+                showModal(encryptModal);
                 qs('#encryptPassword').focus();
             }
 
             function hideEncryptModal() {
-                encryptModal.classList.remove('active');
+                hideModal(encryptModal);
             }
 
             async function doEncrypt() {
                 try {
-                    hideEncryptModal(); // ✅ close modal immediately
-
                     const password = qs('#encryptPassword').value;
                     if (!password) {
                         alert('Password required');
@@ -1907,29 +2105,29 @@
                     const preset = qs('#encryptArgonPreset').value;
                     const content = editor.value;
                     const passwordHint = qs('#encryptHint').value;
-                    const params = {
-                        preset,
-                        timestamp: Date.now()
-                    };
+                    const params = { preset, timestamp: Date.now() };
 
-                    setStatus('Encrypting note...', true); // ✅ show progress in main window
+                    hideEncryptModal();
+                    setStatus('Encrypting note...', true);
 
-                    const {
-                        encrypted,
-                        params: encryptionParams
-                    } = await encryptNoteContent(content, password, params);
+                    const { encrypted, params: encryptionParams } =
+                        await encryptNoteContent(content, password, params);
 
                     currentNote = {
                         ...currentNote,
-                        content: encrypted,
+                        content: encrypted,   // 🔒 ciphertext
                         isEncrypted: true,
                         encryptionParams,
                         passwordHint,
-                        title: currentNote.title + ' (Encrypted)'
+                        title: currentNote.title.endsWith(' (Encrypted)')
+                            ? currentNote.title
+                            : currentNote.title + ' (Encrypted)'
                     };
 
-                    updateEditorState();
+                    // 🔥 force save ciphertext to localStorage
                     saveCurrentNote();
+
+                    updateEditorState();
                     setStatus('Note encrypted successfully.');
                 } catch (e) {
                     setStatus('Encryption failed: ' + e.message);
@@ -1950,31 +2148,28 @@
                     passwordHintEl.style.display = 'none';
                 }
 
-                decryptModal.style.display = 'flex'; // reset
-                decryptModal.classList.add('active');
+                showModal(decryptModal);
                 qs('#decryptPassword').focus();
             }
 
             function hideDecryptModal() {
-                decryptModal.classList.remove('active');
+                hideModal(decryptModal);
             }
 
             async function doDecrypt() {
                 try {
-                    const password = qs('#decryptPassword').value; // capture before hiding
+                    const password = qs('#decryptPassword').value;
                     if (!password) {
                         alert('Password required');
                         return;
                     }
 
-                    // 🔥 force close the modal immediately
-                    decryptModal.classList.remove('active');
-                    decryptModal.style.display = 'none';
-
+                    // Capture the preset BEFORE hiding the modal
                     const preset = qs('#decryptArgonPreset').value;
-                    const params = {
-                        preset
-                    };
+                    const params = { preset };
+
+                    // Now hide the modal
+                    hideDecryptModal();
 
                     setStatus('Decrypting note...', true);
 
@@ -1982,18 +2177,28 @@
 
                     currentNote = {
                         ...currentNote,
-                        content: decryptedContent,
+                        content: decryptedContent,   // 🔓 plaintext
                         isEncrypted: false,
                         encryptionParams: null,
                         title: currentNote.title.replace(' (Encrypted)', '')
                     };
 
-                    updateEditorState();
+                    // 🔥 Save immediately so localStorage has plaintext
                     saveCurrentNote();
+
+                    // Update everything after saving
+                    updateEditorState();
+                    renderNoteList();   // refresh sidebar so lock icon disappears
+                    updateCounts();     // recalc word/char/line counts
                     setStatus('Note decrypted successfully.');
+
+                    // Clear password AFTER successful decryption
+                    qs('#decryptPassword').value = '';
+
                 } catch (e) {
                     setStatus('Decryption failed: ' + e.message);
                     console.error(e);
+                    // Don't clear password on error so user can try again
                 }
             }
 
@@ -2014,43 +2219,48 @@
                     const file = await fileHandle.getFile();
                     const content = await file.text();
 
-                    let noteData = {
-                        content: content,
-                        isEncrypted: isLikelyEncrypted(content),
-                        encryptionParams: null,
-                        fileHandle: fileHandle,
-                        title: file.name,
-                        createdAt: Date.now(),
-                        updatedAt: Date.now()
-                    };
-
-                    // Check if it's a JSON export
+                    // Check if it's an exported JSON file
                     if (file.name.endsWith('.json')) {
                         try {
-                            const parsed = JSON.parse(content);
-                            if (parsed.note) {
-                                noteData = {
-                                    ...noteData,
-                                    ...parsed.note,
-                                    fileHandle: fileHandle
+                            const exportData = JSON.parse(content);
+                            if (exportData.note) {
+                                // Import the note
+                                currentNote = {
+                                    ...exportData.note,
+                                    id: generateId(),
+                                    fileHandle: null
                                 };
+                                notes.unshift(currentNote);
+                                saveNotes();
+                                updateEditorState();
+                                setStatus(`Imported note: ${currentNote.title}`);
+                                return;
                             }
-                        } catch (e) {
-                            console.error('Error parsing JSON file:', e);
+                        } catch {
+                            // Not a valid export file, continue as plain text
                         }
                     }
 
-                    currentNote = noteData;
+                    // Handle plain text file
+                    const isEncrypted = isLikelyEncrypted(content);
 
-                    // Add to notes list if not already there
-                    if (!notes.some(n => n.id === currentNote.id)) {
-                        notes.unshift(currentNote);
-                        saveNotes();
-                    }
+                    currentNote = {
+                        id: generateId(),
+                        content,
+                        isEncrypted,
+                        encryptionParams: null,
+                        fileHandle,
+                        title: file.name,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        passwordHint: ''
+                    };
 
+                    notes.unshift(currentNote);
+                    saveNotes();
                     updateEditorState();
-                    renderNoteList();
-                    setStatus('Note loaded from ' + file.name);
+                    setStatus(`Loaded file: ${file.name}`);
+
                 } catch (err) {
                     // User cancelled the open dialog or API not available
                     if (err.name !== 'AbortError') {
@@ -2061,7 +2271,7 @@
             }
 
             function showSettingsModal() {
-                // Set current values
+                // Populate settings form
                 qs('#autoSave').value = settings.autoSave;
                 qs('#spellCheck').value = settings.spellCheck;
                 qs('#defaultEncryption').value = settings.defaultEncryption;
@@ -2071,17 +2281,11 @@
                 qs('#fontSize').value = settings.fontSize;
                 qs('#fontFamily').value = settings.fontFamily;
 
-                // Show first tab
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.style.display = 'none';
-                });
-                qs('#generalTab').style.display = 'block';
-
-                settingsModal.classList.add('active');
+                showModal(settingsModal);
             }
 
             function hideSettingsModal() {
-                settingsModal.classList.remove('active');
+                hideModal(settingsModal);
             }
 
             function saveSettingsFromModal() {
@@ -2098,17 +2302,153 @@
                     applySettings();
                     setupAutoSave();
                     hideSettingsModal();
-                    setStatus('Settings saved successfully.');
+                    setStatus('Settings saved.');
                 }
             }
 
             function showPasswordGenerator() {
-                passwordGeneratorModal.classList.add('active');
+                showModal(passwordGeneratorModal);
                 generateNewPassword();
             }
 
             function hidePasswordGenerator() {
-                passwordGeneratorModal.classList.remove('active');
+                hideModal(passwordGeneratorModal);
+            }
+
+            function generateNewPassword() {
+                const length = parseInt(qs('#passwordLength').value);
+                const includeUppercase = qs('#includeUppercase').checked;
+                const includeLowercase = qs('#includeLowercase').checked;
+                const includeNumbers = qs('#includeNumbers').checked;
+                const includeSymbols = qs('#includeSymbols').checked;
+
+                const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+                const numbers = '0123456789';
+                const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+                let charset = '';
+                if (includeUppercase) charset += uppercase;
+                if (includeLowercase) charset += lowercase;
+                if (includeNumbers) charset += numbers;
+                if (includeSymbols) charset += symbols;
+
+                // Ensure at least one character type is selected
+                if (!charset) {
+                    charset = lowercase + uppercase + numbers;
+                }
+
+                let password = '';
+                const values = new Uint32Array(length);
+                crypto.getRandomValues(values);
+
+                for (let i = 0; i < length; i++) {
+                    password += charset[values[i] % charset.length];
+                }
+
+                generatedPasswordInput.value = password;
+                updatePasswordStrength(password);
+            }
+
+            function updatePasswordStrength(password) {
+                let strength = 0;
+                let feedback = '';
+
+                // Length check
+                if (password.length >= 12) strength += 2;
+                else if (password.length >= 8) strength += 1;
+
+                // Character variety checks
+                if (/[A-Z]/.test(password)) strength += 1;
+                if (/[a-z]/.test(password)) strength += 1;
+                if (/[0-9]/.test(password)) strength += 1;
+                if (/[^A-Za-z0-9]/.test(password)) strength += 2;
+
+                // Determine strength level
+                let strengthLevel;
+                if (strength >= 7) {
+                    strengthLevel = 'strong';
+                    feedback = 'Strong password';
+                } else if (strength >= 4) {
+                    strengthLevel = 'medium';
+                    feedback = 'Medium password';
+                } else {
+                    strengthLevel = 'weak';
+                    feedback = 'Weak password';
+                }
+
+                // Update UI
+                const strengthValue = qs('#strengthValue');
+                const strengthMeter = qs('#strengthMeter');
+                
+                strengthValue.textContent = feedback;
+                strengthValue.className = strengthLevel;
+                
+                // Update meter width and color
+                let meterWidth = 0;
+                let meterColor = '#f43f5e'; // red for weak
+                
+                if (strengthLevel === 'medium') {
+                    meterWidth = 50;
+                    meterColor = '#f59e0b'; // orange for medium
+                } else if (strengthLevel === 'strong') {
+                    meterWidth = 100;
+                    meterColor = '#22c55e'; // green for strong
+                }
+                
+                strengthMeter.style.width = `${meterWidth}%`;
+                strengthMeter.style.background = meterColor;
+            }
+
+            function copyGeneratedPassword() {
+                navigator.clipboard.writeText(generatedPasswordInput.value).then(() => {
+                    setStatus('Password copied to clipboard!');
+                    hidePasswordGenerator();
+                }).catch(err => {
+                    setStatus('Failed to copy password: ' + err);
+                });
+            }
+
+            function applyTextFormatting(command, value = null) {
+                document.execCommand(command, false, value);
+                editor.focus();
+            }
+
+            function printNote() {
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>${currentNote.title}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }
+                                .note-title { font-size: 24px; margin-bottom: 20px; }
+                                .note-content { white-space: pre-wrap; }
+                                .encrypted-note { color: #999; font-style: italic; }
+                                @media print {
+                                    body { margin: 0; }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="note-title">${currentNote.title}</div>
+                            <div class="note-content">${currentNote.isEncrypted ? 
+                                '<div class="encrypted-note">[Encrypted content cannot be displayed]</div>' : 
+                                editor.value.replace(/\n/g, '<br>')}</div>
+                            <div style="margin-top: 30px; font-size: 12px; color: #666;">
+                                Printed from Secure Notepad Pro on ${new Date().toLocaleString()}
+                            </div>
+                        </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                
+                // Wait for content to load before printing
+                setTimeout(() => {
+                    printWindow.print();
+                    // printWindow.close(); // Don't close automatically - let user decide
+                }, 250);
             }
 
             function toggleFullscreen() {
@@ -2129,473 +2469,34 @@
                 }
             }
 
-            function printNote() {
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                    <html>
-                    <head>
-                        <title>Print Note: ${currentNote.title}</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
-                            .note-title { font-size: 24px; margin-bottom: 20px; }
-                            .note-content { white-space: pre-wrap; }
-                            .encrypted-note { font-family: monospace; word-break: break-all; }
-                            @media print {
-                                body { padding: 0; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <h1 class="note-title">${currentNote.title}</h1>
-                        <div class="note-content ${currentNote.isEncrypted ? 'encrypted-note' : ''}">${currentNote.isEncrypted ? currentNote.content : editor.value}</div>
-                    </body>
-                    </html>
-                `);
-                printWindow.document.close();
-
-                setTimeout(() => {
-                    printWindow.print();
-                    // printWindow.close(); // Uncomment if you want to automatically close after printing
-                }, 250);
-            }
-
-            function applyTextFormatting(command, value = null) {
-                document.execCommand(command, false, value);
-                editor.focus();
-            }
-
-            // Delete note functionality
             function showDeleteConfirm(note) {
                 noteToDelete = note;
                 qs('#deleteNoteName').textContent = note.title;
-                deleteConfirmModal.classList.add('active');
+                showModal(deleteConfirmModal);
             }
 
             function hideDeleteConfirm() {
-                deleteConfirmModal.classList.remove('active');
+                hideModal(deleteConfirmModal);
                 noteToDelete = null;
             }
 
             function deleteNote() {
                 if (!noteToDelete) return;
 
-                // Remove the note from the array
-                const index = notes.findIndex(note => note.id === noteToDelete.id);
-                if (index !== -1) {
-                    notes.splice(index, 1);
-                }
+                notes = notes.filter(n => n.id !== noteToDelete.id);
 
-                // If we're deleting the current note, create a new one
+                // If we deleted the current note, create a fresh empty one
                 if (currentNote.id === noteToDelete.id) {
                     createNewNote();
                 }
 
-                // Save and update UI
                 saveNotes();
                 renderNoteList();
                 hideDeleteConfirm();
-                setStatus('Note deleted.');
+                setStatus(`Note "${noteToDelete.title}" deleted.`);
+                noteToDelete = null;
             }
 
-            // Password Generator Functions
-            function generatePassword(length, options) {
-                const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-                const numbers = '0123456789';
-                const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-                let charset = '';
-                if (options.includeUppercase) charset += uppercase;
-                if (options.includeLowercase) charset += lowercase;
-                if (options.includeNumbers) charset += numbers;
-                if (options.includeSymbols) charset += symbols;
-
-                // Ensure at least one character set is selected
-                if (!charset) {
-                    charset = uppercase + lowercase + numbers + symbols;
-                }
-
-                let password = '';
-                const values = new Uint32Array(length);
-                crypto.getRandomValues(values);
-
-                for (let i = 0; i < length; i++) {
-                    password += charset[values[i] % charset.length];
-                }
-
-                return password;
-            }
-
-            function calculatePasswordStrength(password) {
-                let charsetSize = 0;
-                if (/[a-z]/.test(password)) charsetSize += 26;
-                if (/[A-Z]/.test(password)) charsetSize += 26;
-                if (/[0-9]/.test(password)) charsetSize += 10;
-                if (/[^A-Za-z0-9]/.test(password)) charsetSize += 32;
-
-                if (charsetSize === 0) return {
-                    score: 0,
-                    label: "Very Weak"
-                };
-
-                const entropy = password.length * Math.log2(charsetSize);
-                const guesses = 2 ** entropy;
-                const crackTimeSeconds = guesses / 1e10; // 10B guesses per second
-
-                let score, label;
-                if (crackTimeSeconds < 3600) { // <1 hour
-                    score = 10;
-                    label = "Very Weak";
-                } else if (crackTimeSeconds < 86400) { // <1 day
-                    score = 25;
-                    label = "Weak";
-                } else if (crackTimeSeconds < 2592000) { // <1 month
-                    score = 40;
-                    label = "Fair";
-                } else if (crackTimeSeconds < 31536000) { // <1 year
-                    score = 55;
-                    label = "Okay";
-                } else if (crackTimeSeconds < 315360000) { // <10 years
-                    score = 70;
-                    label = "Good";
-                } else if (crackTimeSeconds < 31536000000) { // <1000 years
-                    score = 85;
-                    label = "Strong";
-                } else if (crackTimeSeconds < 3153600000000) { // <100k years
-                    score = 95;
-                    label = "Very Strong";
-                } else { // beyond human timescale
-                    score = 100;
-                    label = "Uncrackable";
-                }
-
-
-                return {
-                    score,
-                    label
-                };
-            }
-
-
-            function updatePasswordStrength(password) {
-                const strengthValue = document.getElementById("strengthValue");
-                const strengthMeter = document.getElementById("strengthMeter");
-
-                if (!password) {
-                    strengthValue.textContent = "-";
-                    strengthMeter.style.width = "0%";
-                    strengthMeter.style.background = "transparent";
-                    return;
-                }
-
-                // Helper to display crack time nicely
-                function formatCrackTime(seconds) {
-                    if (seconds < 60) return `${seconds.toFixed(0)} seconds`;
-                    if (seconds < 3600) return `${(seconds / 60).toFixed(0)} minutes`;
-                    if (seconds < 86400) return `${(seconds / 3600).toFixed(0)} hours`;
-                    if (seconds < 2592000) return `${(seconds / 86400).toFixed(0)} days`;
-                    if (seconds < 31536000) return `${(seconds / 2592000).toFixed(0)} months`;
-                    if (seconds < 315360000) return `${(seconds / 31536000).toFixed(0)} years`;
-                    if (seconds < 31536000000) return `${(seconds / 315360000).toFixed(0)} centuries`;
-
-                    // Beyond centuries → format big numbers nicely
-                    const millennia = seconds / 31536000000; // 1000 years
-                    return abbreviateNumber(millennia) + " millennia";
-                }
-
-                // helper for big numbers like 6e+105
-                function abbreviateNumber(num) {
-                    if (num < 1e3) return num.toFixed(0);
-                    if (num < 1e6) return (num / 1e3).toFixed(1) + "K";
-                    if (num < 1e9) return (num / 1e6).toFixed(1) + "M";
-                    if (num < 1e12) return (num / 1e9).toFixed(1) + "B";
-                    if (num < 1e15) return (num / 1e12).toFixed(1) + "T";
-
-                    // Beyond trillions → use scientific notation
-                    const exponent = Math.floor(Math.log10(num));
-                    const mantissa = (num / Math.pow(10, exponent)).toFixed(2);
-                    return `${mantissa}e${exponent}`;
-                }
-
-
-
-                // Character set size
-                let charsetSize = 0;
-                if (/[a-z]/.test(password)) charsetSize += 26;
-                if (/[A-Z]/.test(password)) charsetSize += 26;
-                if (/[0-9]/.test(password)) charsetSize += 10;
-                if (/[^A-Za-z0-9]/.test(password)) charsetSize += 32;
-
-                const entropy = password.length * Math.log2(charsetSize || 1);
-                const guesses = 2 ** entropy;
-                const crackTimeSeconds = guesses / 1e10; // assume 10B guesses/sec
-
-                // Strength mapping
-                let score, label;
-                if (crackTimeSeconds < 3600) { // <1 hour
-                    score = 10;
-                    label = "Very Weak";
-                } else if (crackTimeSeconds < 86400) { // <1 day
-                    score = 25;
-                    label = "Weak";
-                } else if (crackTimeSeconds < 2592000) { // <1 month
-                    score = 40;
-                    label = "Fair";
-                } else if (crackTimeSeconds < 31536000) { // <1 year
-                    score = 55;
-                    label = "Okay";
-                } else if (crackTimeSeconds < 315360000) { // <10 years
-                    score = 70;
-                    label = "Good";
-                } else if (crackTimeSeconds < 31536000000) { // <1000 years
-                    score = 85;
-                    label = "Strong";
-                } else if (crackTimeSeconds < 1e20 * 31536000) { // <10^20 years
-                    score = 95;
-                    label = "Very Strong";
-                } else { // absolutely beyond realistic cracking
-                    score = 100;
-                    label = "Uncrackable";
-                }
-
-
-                // Update UI with crack time
-                const crackTimeDisplay = formatCrackTime(crackTimeSeconds);
-                strengthValue.textContent = `${label} (${score}%) ≈ ${crackTimeDisplay}`;
-
-                strengthMeter.style.width = score + "%";
-                strengthMeter.style.background =
-                    score < 30 ? "red" :
-                    score < 50 ? "orange" :
-                    score < 80 ? "yellowgreen" : "green";
-            }
-
-
-            function generateNewPassword() {
-                const length = parseInt(document.getElementById("passwordLength").value);
-                const password = generatePassword(length, {
-                    includeUppercase: document.getElementById("includeUppercase").checked,
-                    includeLowercase: document.getElementById("includeLowercase").checked,
-                    includeNumbers: document.getElementById("includeNumbers").checked,
-                    includeSymbols: document.getElementById("includeSymbols").checked
-                });
-
-                generatedPasswordInput.value = password;
-                updatePasswordStrength(password); // ✅ show strength
-            }
-
-
-            function copyGeneratedPassword() {
-                const password = generatedPasswordInput.value;
-                if (password) {
-                    navigator.clipboard.writeText(password).then(() => {
-                        setStatus('Password copied to clipboard!');
-
-                        // Show visual feedback
-                        const icon = copyPasswordBtn.querySelector('i');
-                        icon.className = 'fas fa-check';
-                        setTimeout(() => {
-                            icon.className = 'fas fa-copy';
-                        }, 2000);
-                    }).catch(err => {
-                        setStatus('Failed to copy password: ' + err);
-                    });
-                }
-            }
-
-            function useGeneratedPassword() {
-                const password = generatedPasswordInput.value;
-                if (password) {
-                    // If encrypt modal is open, populate it with the generated password
-                    if (encryptModal.classList.contains('active')) {
-                        qs('#encryptPassword').value = password;
-                        hidePasswordGenerator();
-                        qs('#encryptPassword').focus();
-                    } else {
-                        // Otherwise, just copy to clipboard
-                        copyGeneratedPassword();
-                        hidePasswordGenerator();
-                    }
-                }
-            }
-
-            function setupEventListeners() {
-                // Editor events
-                editor.addEventListener('input', () => {
-                    if (!currentNote.isEncrypted) {
-                        currentNote.content = editor.value;
-                        currentNote.updatedAt = Date.now();
-                        saveCurrentNote(); // make sure it's stored in localStorage
-                    }
-                    updateCounts();
-                });
-
-                // Title editing
-                noteTitle.addEventListener('blur', () => {
-                    const newTitle = noteTitle.textContent.trim() || 'Untitled Note';
-                    currentNote.title = newTitle;
-                    currentNote.updatedAt = Date.now();
-                    saveCurrentNote();
-                    renderNoteList();
-                    setStatus('Title updated.');
-                });
-
-                // Search input
-                searchInput.addEventListener('input', renderNoteList);
-
-                // Sidebar navigation buttons
-                btnNewNote.addEventListener('click', createNewNote);
-                btnSaveNote.addEventListener('click', saveNoteToFile);
-                btnEncryptNote.addEventListener('click', showEncryptModal);
-                btnDecryptNote.addEventListener('click', showDecryptModal);
-                btnPasswordGenerator.addEventListener('click', showPasswordGenerator);
-                btnLoadNote.addEventListener('click', loadNoteFromFile);
-                btnExportNote.addEventListener('click', exportNote);
-                btnCopy.addEventListener('click', copyToClipboard);
-                btnClear.addEventListener('click', clearNote);
-                btnWordCount.addEventListener('click', showWordCountStats);
-                btnSettings.addEventListener('click', showSettingsModal);
-
-                // Toolbar buttons
-                btnSave.addEventListener('click', saveNoteToFile);
-                btnEncrypt.addEventListener('click', showEncryptModal);
-                btnDecrypt.addEventListener('click', showDecryptModal);
-                btnLoad.addEventListener('click', loadNoteFromFile);
-                btnExport.addEventListener('click', exportNote);
-
-                // Quick action buttons
-                btnQuickSave.addEventListener('click', saveNoteToFile);
-                btnQuickEncrypt.addEventListener('click', showEncryptModal);
-                btnQuickDecrypt.addEventListener('click', showDecryptModal);
-                btnPrint.addEventListener('click', printNote);
-                btnFullscreen.addEventListener('click', toggleFullscreen);
-
-                // Formatting buttons
-                btnBold.addEventListener('click', () => applyTextFormatting('bold'));
-                btnItalic.addEventListener('click', () => applyTextFormatting('italic'));
-                btnUnderline.addEventListener('click', () => applyTextFormatting('underline'));
-                btnListUl.addEventListener('click', () => applyTextFormatting('insertUnorderedList'));
-                btnListOl.addEventListener('click', () => applyTextFormatting('insertOrderedList'));
-                btnLink.addEventListener('click', () => {
-                    const url = prompt('Enter URL:', 'https://');
-                    if (url) applyTextFormatting('createLink', url);
-                });
-                btnCode.addEventListener('click', () => {
-                    applyTextFormatting('formatBlock', '<pre>');
-                });
-                btnQuote.addEventListener('click', () => {
-                    applyTextFormatting('formatBlock', '<blockquote>');
-                });
-
-                // Modal buttons
-                btnConfirmEncrypt.addEventListener('click', doEncrypt);
-                btnCancelEncrypt.addEventListener('click', hideEncryptModal);
-                btnConfirmDecrypt.addEventListener('click', doDecrypt);
-                btnCancelDecrypt.addEventListener('click', hideDecryptModal);
-                btnSaveSettings.addEventListener('click', saveSettingsFromModal);
-                btnCancelSettings.addEventListener('click', hideSettingsModal);
-                btnCancelPasswordGenerator.addEventListener('click', hidePasswordGenerator);
-                btnCloseWordCount.addEventListener('click', () => {
-                    wordCountModal.classList.remove('active');
-                });
-                btnConfirmDelete.addEventListener('click', deleteNote);
-                btnCancelDelete.addEventListener('click', hideDeleteConfirm);
-
-                // Password generator buttons
-                generatePasswordBtn.addEventListener('click', generateNewPassword);
-                copyPasswordBtn.addEventListener('click', copyGeneratedPassword);
-                usePasswordBtn.addEventListener('click', useGeneratedPassword);
-
-                // Tab switching
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        // Remove active class from all tabs
-                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                        // Add active class to clicked tab
-                        tab.classList.add('active');
-
-                        // Show corresponding tab content
-                        const tabName = tab.getAttribute('data-tab');
-                        document.querySelectorAll('.tab-content').forEach(content => {
-                            content.style.display = 'none';
-                        });
-                        qs(`#${tabName}Tab`).style.display = 'block';
-                    });
-                });
-
-                // Argon2 preset selectors
-                qs('#encryptArgonPreset').addEventListener('change', updateParamInfo);
-                qs('#decryptArgonPreset').addEventListener('change', updateParamInfo);
-
-                // Password visibility toggles
-                document.querySelectorAll('.toggle-password').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const input = this.parentElement.querySelector('input');
-                        const type = input.type === 'password' ? 'text' : 'password';
-                        input.type = type;
-                        this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-                    });
-                });
-
-                // Keyboard shortcuts
-                document.addEventListener('keydown', (e) => {
-                    if (e.ctrlKey || e.metaKey) {
-                        switch (e.key) {
-                            case 's':
-                                e.preventDefault();
-                                saveNoteToFile();
-                                break;
-                            case 'e':
-                                e.preventDefault();
-                                if (!currentNote.isEncrypted) {
-                                    showEncryptModal();
-                                }
-                                break;
-                            case 'd':
-                                e.preventDefault();
-                                if (currentNote.isEncrypted) {
-                                    showDecryptModal();
-                                }
-                                break;
-                            case 'n':
-                                e.preventDefault();
-                                createNewNote();
-                                break;
-                            case 'b':
-                                e.preventDefault();
-                                applyTextFormatting('bold');
-                                break;
-                            case 'i':
-                                e.preventDefault();
-                                applyTextFormatting('italic');
-                                break;
-                            case 'u':
-                                e.preventDefault();
-                                applyTextFormatting('underline');
-                                break;
-                        }
-                    }
-                });
-
-                // Click outside modals to close
-                window.addEventListener('click', (e) => {
-                    if (e.target === encryptModal) hideEncryptModal();
-                    if (e.target === decryptModal) hideDecryptModal();
-                    if (e.target === settingsModal) hideSettingsModal();
-                    if (e.target === passwordGeneratorModal) hidePasswordGenerator();
-                    if (e.target === wordCountModal) wordCountModal.classList.remove('active');
-                    if (e.target === deleteConfirmModal) hideDeleteConfirm();
-                });
-
-                // Handle fullscreen change events
-                document.addEventListener('fullscreenchange', () => {
-                    if (!document.fullscreenElement && isFullscreen) {
-                        isFullscreen = false;
-                        btnFullscreen.innerHTML = '<i class="fas fa-expand"></i>';
-                        btnFullscreen.title = 'Toggle Fullscreen';
-                    }
-                });
-            }
         })();
     </script>
 </body>
