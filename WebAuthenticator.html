@@ -579,6 +579,29 @@ function base32Decode(s){
   return new Uint8Array(bytes);
 }
 
+/* ---------- Binary Conversion Utilities ---------- */
+// Convert number to bytes (little-endian)
+function numToUint16(num) {
+  const arr = new Uint16Array([num]);
+  return new Uint8Array(arr.buffer);
+}
+
+function numToUint32(num) {
+  const arr = new Uint32Array([num]);
+  return new Uint8Array(arr.buffer);
+}
+
+// Convert bytes to number (little-endian)
+function uint16ToNum(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return view.getUint16(0, true);
+}
+
+function uint32ToNum(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return view.getUint32(0, true);
+}
+
 /* TOTP: HMAC-SHA1 counter -> code */
 async function hotp(secretBytes, counter, digits=6){
   const counterBytes = new Uint8Array(8);
@@ -1294,18 +1317,41 @@ btnSave.addEventListener('click', async ()=>{
   try{
     const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
     
-    // Create the payload object
-    const payload = {
-      meta: currentFileMeta,
-      iv: u8ToB64(iv),
-      ciphertext: u8ToB64(ct)
-    };
+    // Convert metadata to binary format (no JSON)
+    const saltBytes = b64ToU8(currentFileMeta.salt);
+    const timeBytes = numToUint32(currentFileMeta.params.time);
+    const memBytes = numToUint32(currentFileMeta.params.mem);
+    const parallelismBytes = new Uint8Array([currentFileMeta.params.parallelism]);
+    const hashLenBytes = new Uint8Array([currentFileMeta.params.hashLen]);
+    const versionBytes = new Uint8Array([currentFileMeta.version || 1]);
     
-    // Convert the entire payload to a JSON string and then to Base64
-    const payloadString = JSON.stringify(payload);
-    const payloadBase64 = btoa(unescape(encodeURIComponent(payloadString)));
+    // Create binary metadata: [version][salt][time][mem][parallelism][hashLen]
+    const metaBytes = new Uint8Array(
+      1 + saltBytes.length + 4 + 4 + 1 + 1
+    );
     
-    const blob = new Blob([payloadBase64], {type: 'text/plain'});
+    let offset = 0;
+    metaBytes.set(versionBytes, offset); offset += 1;
+    metaBytes.set(saltBytes, offset); offset += saltBytes.length;
+    metaBytes.set(timeBytes, offset); offset += 4;
+    metaBytes.set(memBytes, offset); offset += 4;
+    metaBytes.set(parallelismBytes, offset); offset += 1;
+    metaBytes.set(hashLenBytes, offset); offset += 1;
+    
+    // Create final binary: [metaLength (2B)][meta][iv (12B)][ciphertext]
+    const metaLength = numToUint16(metaBytes.length);
+    const combined = new Uint8Array(
+      2 + metaBytes.length + iv.length + ct.length
+    );
+    
+    offset = 0;
+    combined.set(metaLength, offset); offset += 2;
+    combined.set(metaBytes, offset); offset += metaBytes.length;
+    combined.set(iv, offset); offset += iv.length;
+    combined.set(ct, offset);
+    
+    // Save as binary blob
+    const blob = new Blob([combined], {type: 'application/octet-stream'});
     const filename = `authenticator-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1315,7 +1361,7 @@ btnSave.addEventListener('click', async ()=>{
     a.remove();
     URL.revokeObjectURL(a.href);
     
-    // Add visual feedback for successful save
+    // Visual feedback
     const btn = document.getElementById('btnSave');
     const originalText = btn.textContent;
     btn.textContent = '✓ Saved!';
@@ -1336,120 +1382,85 @@ fileInput.addEventListener('change', async (e)=>{
   const f = e.target.files[0];
   if(!f) return;
   try{
-    const base64Content = await f.text();
+    // Read as ArrayBuffer for binary data
+    const arrayBuffer = await f.arrayBuffer();
+    const dataView = new DataView(arrayBuffer);
     
-    // Decode the Base64 content back to JSON
-    try {
-      const jsonString = decodeURIComponent(escape(atob(base64Content)));
-      let parsed = JSON.parse(jsonString);
-      
-      if(!parsed.meta || !parsed.iv || !parsed.ciphertext){ 
-        alert('Invalid DB file'); 
-        fileInput.value=''; 
-        return; 
-      }
-      
-      showModal(`
-        <h2>Unlock database</h2>
-        <label>Master password</label>
-        <div class="password-container">
-          <input id="load_pw" type="password" placeholder="Enter master password" />
-        </div>
-        <div class="actions">
-          <button id="l_cancel">Cancel</button>
-          <button id="l_open" class="primary">Open</button>
-        </div>
-      `);
-      
-      modalEl.querySelector('#l_cancel').onclick = ()=>{
-        fileInput.value='';
+    // Read metadata length (first 2 bytes, little-endian)
+    const metaLength = dataView.getUint16(0, true);
+    
+    // Extract metadata bytes
+    const metaBytes = new Uint8Array(arrayBuffer, 2, metaLength);
+    
+    // Parse binary metadata
+    let offset = 0;
+    const version = metaBytes[offset]; offset += 1;
+    const saltBytes = new Uint8Array(metaBytes.buffer, metaBytes.byteOffset + offset, 16); offset += 16;
+    const timeBytes = new Uint8Array(metaBytes.buffer, metaBytes.byteOffset + offset, 4); offset += 4;
+    const memBytes = new Uint8Array(metaBytes.buffer, metaBytes.byteOffset + offset, 4); offset += 4;
+    const parallelism = metaBytes[offset]; offset += 1;
+    const hashLen = metaBytes[offset]; offset += 1;
+    
+    // Convert to proper types
+    const time = uint32ToNum(timeBytes);
+    const mem = uint32ToNum(memBytes);
+    
+    // Reconstruct metadata object
+    const meta = {
+      salt: u8ToB64(saltBytes),
+      params: {
+        time: time,
+        mem: mem,
+        parallelism: parallelism,
+        hashLen: hashLen
+      },
+      version: version
+    };
+    
+    // Extract IV and ciphertext
+    const iv = new Uint8Array(arrayBuffer, 2 + metaLength, 12);
+    const ct = new Uint8Array(arrayBuffer, 2 + metaLength + 12);
+    
+    showModal(`
+      <h2>Unlock database</h2>
+      <label>Master password</label>
+      <div class="password-container">
+        <input id="load_pw" type="password" placeholder="Enter master password" />
+      </div>
+      <div class="actions">
+        <button id="l_cancel">Cancel</button>
+        <button id="l_open" class="primary">Open</button>
+      </div>
+    `);
+    
+    modalEl.querySelector('#l_cancel').onclick = ()=>{
+      fileInput.value='';
+      closeModal();
+    };
+    
+    modalEl.querySelector('#l_open').onclick = async ()=>{
+      const pw = modalEl.querySelector('#load_pw').value;
+      if(!pw){ alert('Password required'); return; }
+      const salt = b64ToU8(meta.salt);
+      const params = meta.params;
+      try{
+        const key = await deriveKeyArgon2(pw, salt, params);
+        const pt = await aesGcmDecrypt(key, ct, iv);
+        const obj = JSON.parse(u8ToStr(pt));
+        db = obj;
+        cryptoKey = key;
+        currentFileMeta = meta;
         closeModal();
-      };
-      
-      modalEl.querySelector('#l_open').onclick = async ()=>{
-        const pw = modalEl.querySelector('#load_pw').value;
-        if(!pw){ alert('Password required'); return; }
-        const salt = b64ToU8(parsed.meta.salt);
-        const params = parsed.meta.params;
-        try{
-          const key = await deriveKeyArgon2(pw, salt, params);
-          const iv = b64ToU8(parsed.iv);
-          const ct = b64ToU8(parsed.ciphertext);
-          const pt = await aesGcmDecrypt(key, ct, iv);
-          const obj = JSON.parse(u8ToStr(pt));
-          db = obj;
-          cryptoKey = key;
-          currentFileMeta = parsed.meta;
-          closeModal();
-          setLockedUI(false);
-          startTotpLoop();
-          alert('Database unlocked.');
-        }catch(err){
-          console.error(err);
-          alert('Failed to unlock — wrong password or corrupted file.');
-        } finally {
-          fileInput.value='';
-        }
-      };
-      
-    } catch (decodeError) {
-      // If Base64 decoding fails, try the old JSON format for backward compatibility
-      try {
-        let parsed = JSON.parse(base64Content);
-        if(!parsed.meta || !parsed.iv || !parsed.ciphertext){ 
-          alert('Invalid DB file'); 
-          fileInput.value=''; 
-          return; 
-        }
-        
-        showModal(`
-          <h2>Unlock database</h2>
-          <label>Master password</label>
-          <div class="password-container">
-            <input id="load_pw" type="password" placeholder="Enter master password" />
-          </div>
-          <div class="actions">
-            <button id="l_cancel">Cancel</button>
-            <button id="l_open" class="primary">Open</button>
-          </div>
-        `);
-        
-        modalEl.querySelector('#l_cancel').onclick = ()=>{
-          fileInput.value='';
-          closeModal();
-        };
-        
-        modalEl.querySelector('#l_open').onclick = async ()=>{
-          const pw = modalEl.querySelector('#load_pw').value;
-          if(!pw){ alert('Password required'); return; }
-          const salt = b64ToU8(parsed.meta.salt);
-          const params = parsed.meta.params;
-          try{
-            const key = await deriveKeyArgon2(pw, salt, params);
-            const iv = b64ToU8(parsed.iv);
-            const ct = b64ToU8(parsed.ciphertext);
-            const pt = await aesGcmDecrypt(key, ct, iv);
-            const obj = JSON.parse(u8ToStr(pt));
-            db = obj;
-            cryptoKey = key;
-            currentFileMeta = parsed.meta;
-            closeModal();
-            setLockedUI(false);
-            startTotpLoop();
-            alert('Database unlocked.');
-          }catch(err){
-            console.error(err);
-            alert('Failed to unlock — wrong password or corrupted file.');
-          } finally {
-            fileInput.value='';
-          }
-        };
-        
-      } catch (jsonError) {
-        alert('Failed to read file: Invalid format');
+        setLockedUI(false);
+        startTotpLoop();
+        alert('Database unlocked.');
+      }catch(err){
+        console.error(err);
+        alert('Failed to unlock — wrong password or corrupted file.');
+      } finally {
         fileInput.value='';
       }
-    }
+    };
   }catch(err){
     console.error(err);
     alert('Failed to load file: '+err);
@@ -1560,18 +1571,35 @@ async function autoSaveDb() {
     const iv = randBytes(12);
     const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
     
-    // Create the payload object
-    const payload = {
-      meta: currentFileMeta,
-      iv: u8ToB64(iv),
-      ciphertext: u8ToB64(ct)
-    };
+    // Convert metadata to binary format
+    const saltBytes = b64ToU8(currentFileMeta.salt);
+    const timeBytes = numToUint32(currentFileMeta.params.time);
+    const memBytes = numToUint32(currentFileMeta.params.mem);
+    const parallelismBytes = new Uint8Array([currentFileMeta.params.parallelism]);
+    const hashLenBytes = new Uint8Array([currentFileMeta.params.hashLen]);
+    const versionBytes = new Uint8Array([currentFileMeta.version || 1]);
     
-    // Convert the entire payload to a JSON string and then to Base64
-    const payloadString = JSON.stringify(payload);
-    const payloadBase64 = btoa(unescape(encodeURIComponent(payloadString)));
+    const metaBytes = new Uint8Array(1 + saltBytes.length + 4 + 4 + 1 + 1);
     
-    const blob = new Blob([payloadBase64], {type: 'text/plain'});
+    let offset = 0;
+    metaBytes.set(versionBytes, offset); offset += 1;
+    metaBytes.set(saltBytes, offset); offset += saltBytes.length;
+    metaBytes.set(timeBytes, offset); offset += 4;
+    metaBytes.set(memBytes, offset); offset += 4;
+    metaBytes.set(parallelismBytes, offset); offset += 1;
+    metaBytes.set(hashLenBytes, offset);
+    
+    // Create final binary
+    const metaLength = numToUint16(metaBytes.length);
+    const combined = new Uint8Array(2 + metaBytes.length + iv.length + ct.length);
+    
+    offset = 0;
+    combined.set(metaLength, offset); offset += 2;
+    combined.set(metaBytes, offset); offset += metaBytes.length;
+    combined.set(iv, offset); offset += iv.length;
+    combined.set(ct, offset);
+    
+    const blob = new Blob([combined], {type: 'application/octet-stream'});
     const filename = `authenticator-backup-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
