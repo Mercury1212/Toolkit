@@ -639,7 +639,7 @@ function generateQRCode(url, width = 200, height = 200) {
       if (error) {
         reject(error);
       } else {
-        resolve(canvas.toDataURL('image/png'));
+        resolve(cancanvas.toDataURL('image/png'));
       }
     });
   });
@@ -706,6 +706,44 @@ async function aesGcmEncrypt(key, plaintextBytes, iv){
 }
 async function aesGcmDecrypt(key, ciphertextBytes, iv){
   return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ciphertextBytes));
+}
+
+/* ---------- File System Access API ---------- */
+let fileHandle = null;
+
+// Check if File System Access API is available
+function isFileSystemAPIAvailable() {
+  return 'showSaveFilePicker' in window;
+}
+
+// Request file handle for saving
+async function requestFileHandle() {
+  try {
+    const handle = await window.showSaveFilePicker({
+      types: [{
+        description: 'Authenticator Database',
+        accept: {'application/octet-stream': ['.auth']},
+      }],
+      suggestedName: 'authenticator-db.auth'
+    });
+    return handle;
+  } catch (err) {
+    console.error('Error requesting file handle:', err);
+    return null;
+  }
+}
+
+// Write data to file using File System Access API
+async function writeFileWithHandle(handle, data) {
+  try {
+    const writable = await handle.createWritable();
+    await writable.write(data);
+    await writable.close();
+    return true;
+  } catch (err) {
+    console.error('Error writing file:', err);
+    return false;
+  }
 }
 
 /* ---------- App state ---------- */
@@ -1290,6 +1328,12 @@ btnCreate.addEventListener('click', async ()=>{
     }
     db = { entries: [] , createdAt: new Date().toISOString() };
     currentFileMeta = { salt: u8ToB64(salt), params, version:1 };
+    
+    // Request file handle for saving
+    if (isFileSystemAPIAvailable()) {
+      fileHandle = await requestFileHandle();
+    }
+    
     closeModal();
     setLockedUI(false);
     alert('Database created. Please Save DB to a file to store it locally.');
@@ -1307,6 +1351,7 @@ btnLock.addEventListener('click', ()=>{
     db = { entries: [] };
     currentFileMeta = null;
     selectedId = null;
+    fileHandle = null;
     setLockedUI(true);
     if(totpInterval){ clearInterval(totpInterval); totpInterval=null; countdownEl.textContent='--'; }
   }
@@ -1352,7 +1397,24 @@ btnSave.addEventListener('click', async ()=>{
     combined.set(iv, offset); offset += iv.length;
     combined.set(ct, offset);
     
-    // Save as binary blob
+    // Try to save using File System Access API if we have a handle
+    if (fileHandle) {
+      const success = await writeFileWithHandle(fileHandle, combined);
+      if (success) {
+        // Visual feedback
+        const btn = document.getElementById('btnSave');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Saved!';
+        btn.classList.add('success');
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('success');
+        }, 2000);
+        return;
+      }
+    }
+    
+    // Fallback: Save as download
     const blob = new Blob([combined], {type: 'application/octet-stream'});
     const filename = `authenticator-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
     const a = document.createElement('a');
@@ -1366,7 +1428,7 @@ btnSave.addEventListener('click', async ()=>{
     // Visual feedback
     const btn = document.getElementById('btnSave');
     const originalText = btn.textContent;
-    btn.textContent = '✓ Saved!';
+    btn.textContent = '✓ Downloaded!';
     btn.classList.add('success');
     setTimeout(() => {
       btn.textContent = originalText;
@@ -1601,6 +1663,16 @@ async function autoSaveDb() {
     combined.set(iv, offset); offset += iv.length;
     combined.set(ct, offset);
     
+    // Try to save using File System Access API if we have a handle
+    if (fileHandle) {
+      const success = await writeFileWithHandle(fileHandle, combined);
+      if (success) {
+        console.log('Database auto-saved successfully using File System API');
+        return;
+      }
+    }
+    
+    // Fallback: Save as download
     const blob = new Blob([combined], {type: 'application/octet-stream'});
     const filename = `authenticator-backup-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
     const a = document.createElement('a');
@@ -1616,7 +1688,7 @@ async function autoSaveDb() {
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
     
-    console.log('Database auto-saved successfully');
+    console.log('Database auto-saved successfully using download fallback');
   } catch (err) {
     console.error('Auto-save failed:', err);
     throw err;
