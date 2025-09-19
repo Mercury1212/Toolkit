@@ -639,7 +639,7 @@ function generateQRCode(url, width = 200, height = 200) {
       if (error) {
         reject(error);
       } else {
-        resolve(cancanvas.toDataURL('image/png'));
+        resolve(canvas.toDataURL('image/png'));
       }
     });
   });
@@ -708,41 +708,154 @@ async function aesGcmDecrypt(key, ciphertextBytes, iv){
   return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ciphertextBytes));
 }
 
-/* ---------- File System Access API ---------- */
-let fileHandle = null;
+/* ---------- NEW: File System Access API Integration ---------- */
+let currentFileHandle = null;
 
 // Check if File System Access API is available
-function isFileSystemAPIAvailable() {
-  return 'showSaveFilePicker' in window;
+const isFileSystemAccessAvailable = () => {
+  return 'showSaveFilePicker' in window && 'showOpenFilePicker' in window;
+};
+
+// Prepare file content for saving
+async function prepareFileContent() {
+  const plaintext = strToU8(JSON.stringify(db));
+  const iv = randBytes(12);
+  const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
+  
+  // Convert metadata to binary format (no JSON)
+  const saltBytes = b64ToU8(currentFileMeta.salt);
+  const timeBytes = numToUint32(currentFileMeta.params.time);
+  const memBytes = numToUint32(currentFileMeta.params.mem);
+  const parallelismBytes = new Uint8Array([currentFileMeta.params.parallelism]);
+  const hashLenBytes = new Uint8Array([currentFileMeta.params.hashLen]);
+  const versionBytes = new Uint8Array([currentFileMeta.version || 1]);
+  
+  // Create binary metadata: [version][salt][time][mem][parallelism][hashLen]
+  const metaBytes = new Uint8Array(
+    1 + saltBytes.length + 4 + 4 + 1 + 1
+  );
+  
+  let offset = 0;
+  metaBytes.set(versionBytes, offset); offset += 1;
+  metaBytes.set(saltBytes, offset); offset += saltBytes.length;
+  metaBytes.set(timeBytes, offset); offset += 4;
+  metaBytes.set(memBytes, offset); offset += 4;
+  metaBytes.set(parallelismBytes, offset); offset += 1;
+  metaBytes.set(hashLenBytes, offset); offset += 1;
+  
+  // Create final binary: [metaLength (2B)][meta][iv (12B)][ciphertext]
+  const metaLength = numToUint16(metaBytes.length);
+  const combined = new Uint8Array(
+    2 + metaBytes.length + iv.length + ct.length
+  );
+  
+  offset = 0;
+  combined.set(metaLength, offset); offset += 2;
+  combined.set(metaBytes, offset); offset += metaBytes.length;
+  combined.set(iv, offset); offset += iv.length;
+  combined.set(ct, offset);
+  
+  return combined;
 }
 
-// Request file handle for saving
-async function requestFileHandle() {
+// Download file as fallback
+function downloadFile(data, filename) {
+  const blob = new Blob([data], {type: 'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Save using File System Access API if available, otherwise download
+async function saveWithFileSystemAPI() {
+  if (!cryptoKey || !currentFileMeta) {
+    alert('No unlocked database to save');
+    return false;
+  }
+
   try {
-    const handle = await window.showSaveFilePicker({
+    // Prepare the file content
+    const fileContent = await prepareFileContent();
+    
+    // If we already have a file handle, try to write to it
+    if (currentFileHandle) {
+      try {
+        const writable = await currentFileHandle.createWritable();
+        await writable.write(fileContent);
+        await writable.close();
+        return true;
+      } catch (err) {
+        console.warn('Failed to write to existing file handle, prompting for new file:', err);
+        currentFileHandle = null;
+      }
+    }
+    
+    // If no file handle or writing failed, prompt for a new file
+    if (isFileSystemAccessAvailable()) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          types: [{
+            description: 'Authenticator Database',
+            accept: {'application/octet-stream': ['.auth']},
+          }],
+          suggestedName: 'authenticator-database.auth'
+        });
+        
+        const writable = await handle.createWritable();
+        await writable.write(fileContent);
+        await writable.close();
+        
+        currentFileHandle = handle;
+        return true;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log('User cancelled file save');
+          return false;
+        }
+        console.error('File System Access API failed:', err);
+      }
+    }
+    
+    // Fallback to download if File System API is not available or failed
+    downloadFile(fileContent, `authenticator-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`);
+    return true;
+  } catch (err) {
+    console.error('Save failed:', err);
+    alert('Save failed: ' + err.message);
+    return false;
+  }
+}
+
+// Load using File System Access API if available
+async function loadWithFileSystemAPI() {
+  if (!isFileSystemAccessAvailable()) {
+    fileInput.click();
+    return;
+  }
+  
+  try {
+    const [handle] = await window.showOpenFilePicker({
       types: [{
         description: 'Authenticator Database',
         accept: {'application/octet-stream': ['.auth']},
       }],
-      suggestedName: 'authenticator-db.auth'
+      multiple: false
     });
-    return handle;
+    
+    const file = await handle.getFile();
+    await processDatabaseFile(file, handle);
   } catch (err) {
-    console.error('Error requesting file handle:', err);
-    return null;
-  }
-}
-
-// Write data to file using File System Access API
-async function writeFileWithHandle(handle, data) {
-  try {
-    const writable = await handle.createWritable();
-    await writable.write(data);
-    await writable.close();
-    return true;
-  } catch (err) {
-    console.error('Error writing file:', err);
-    return false;
+    if (err.name === 'AbortError') {
+      console.log('User cancelled file open');
+      return;
+    }
+    console.error('File System Access API failed:', err);
+    fileInput.click();
   }
 }
 
@@ -1279,175 +1392,11 @@ function openEditModal(idx){
   };
 }
 
-/* ---------- Create DB / Lock / Save / Load ---------- */
-
-btnCreate.addEventListener('click', async ()=>{
-  showModal(`
-    <h2>Create new database</h2>
-    <label>Master password</label>
-    <div class="password-container">
-      <input id="p1" type="password" placeholder="Enter password" />
-    </div>
-    <label>Confirm password</label>
-    <div class="password-container">
-      <input id="p2" type="password" placeholder="Confirm password" />
-    </div>
-    <label>Argon2id parameters (you can leave defaults)</label>
-    <div class="row">
-      <div><label>Time (iterations)</label><input id="p_time" type="text" value="3" /></div>
-      <div><label>Memory (KiB)</label><input id="p_mem" type="text" value="65536" /></div>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <div><label>Parallelism</label><input id="p_par" type="text" value="1" /></div>
-      <div><label>HashLen (bytes)</label><input id="p_hashlen" type="text" value="32" /></div>
-    </div>
-    <div class="actions">
-      <button id="c_cancel">Cancel</button>
-      <button id="c_create" class="primary">Create</button>
-    </div>
-  `);
-  modalEl.querySelector('#c_cancel').onclick = closeModal;
-  modalEl.querySelector('#c_create').onclick = async ()=>{
-    const p1 = modalEl.querySelector('#p1').value;
-    const p2 = modalEl.querySelector('#p2').value;
-    if(p1 !== p2){ alert('Passwords do not match'); return; }
-    if(!p1){ alert('Password required'); return; }
-    const params = {
-      time: parseInt(modalEl.querySelector('#p_time').value||'3',10),
-      mem: parseInt(modalEl.querySelector('#p_mem').value||'65536',10),
-      parallelism: parseInt(modalEl.querySelector('#p_par').value||'1',10),
-      hashLen: parseInt(modalEl.querySelector('#p_hashlen').value||'32',10)
-    };
-    const salt = randBytes(16);
-    try{
-      cryptoKey = await deriveKeyArgon2(p1, salt, params);
-    }catch(err){
-      alert('Argon2 derivation failed: '+err);
-      console.error(err);
-      return;
-    }
-    db = { entries: [] , createdAt: new Date().toISOString() };
-    currentFileMeta = { salt: u8ToB64(salt), params, version:1 };
-    
-    // Request file handle for saving
-    if (isFileSystemAPIAvailable()) {
-      fileHandle = await requestFileHandle();
-    }
-    
-    closeModal();
-    setLockedUI(false);
-    alert('Database created. Please Save DB to a file to store it locally.');
-  };
-});
-
-btnAdd.addEventListener('click', ()=> openAddModal());
-
-btnLock.addEventListener('click', ()=>{
-  if(!cryptoKey){
-    return;
-  }
-  if(confirm('Lock and clear decrypted DB from memory?')){
-    cryptoKey = null;
-    db = { entries: [] };
-    currentFileMeta = null;
-    selectedId = null;
-    fileHandle = null;
-    setLockedUI(true);
-    if(totpInterval){ clearInterval(totpInterval); totpInterval=null; countdownEl.textContent='--'; }
-  }
-});
-
-btnSave.addEventListener('click', async ()=>{
-  if(!cryptoKey || !currentFileMeta){ alert('No unlocked database to save'); return; }
-  const plaintext = strToU8(JSON.stringify(db));
-  const iv = randBytes(12);
-  try{
-    const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
-    
-    // Convert metadata to binary format (no JSON)
-    const saltBytes = b64ToU8(currentFileMeta.salt);
-    const timeBytes = numToUint32(currentFileMeta.params.time);
-    const memBytes = numToUint32(currentFileMeta.params.mem);
-    const parallelismBytes = new Uint8Array([currentFileMeta.params.parallelism]);
-    const hashLenBytes = new Uint8Array([currentFileMeta.params.hashLen]);
-    const versionBytes = new Uint8Array([currentFileMeta.version || 1]);
-    
-    // Create binary metadata: [version][salt][time][mem][parallelism][hashLen]
-    const metaBytes = new Uint8Array(
-      1 + saltBytes.length + 4 + 4 + 1 + 1
-    );
-    
-    let offset = 0;
-    metaBytes.set(versionBytes, offset); offset += 1;
-    metaBytes.set(saltBytes, offset); offset += saltBytes.length;
-    metaBytes.set(timeBytes, offset); offset += 4;
-    metaBytes.set(memBytes, offset); offset += 4;
-    metaBytes.set(parallelismBytes, offset); offset += 1;
-    metaBytes.set(hashLenBytes, offset); offset += 1;
-    
-    // Create final binary: [metaLength (2B)][meta][iv (12B)][ciphertext]
-    const metaLength = numToUint16(metaBytes.length);
-    const combined = new Uint8Array(
-      2 + metaBytes.length + iv.length + ct.length
-    );
-    
-    offset = 0;
-    combined.set(metaLength, offset); offset += 2;
-    combined.set(metaBytes, offset); offset += metaBytes.length;
-    combined.set(iv, offset); offset += iv.length;
-    combined.set(ct, offset);
-    
-    // Try to save using File System Access API if we have a handle
-    if (fileHandle) {
-      const success = await writeFileWithHandle(fileHandle, combined);
-      if (success) {
-        // Visual feedback
-        const btn = document.getElementById('btnSave');
-        const originalText = btn.textContent;
-        btn.textContent = '✓ Saved!';
-        btn.classList.add('success');
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.classList.remove('success');
-        }, 2000);
-        return;
-      }
-    }
-    
-    // Fallback: Save as download
-    const blob = new Blob([combined], {type: 'application/octet-stream'});
-    const filename = `authenticator-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
-    
-    // Visual feedback
-    const btn = document.getElementById('btnSave');
-    const originalText = btn.textContent;
-    btn.textContent = '✓ Downloaded!';
-    btn.classList.add('success');
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.classList.remove('success');
-    }, 2000);
-  } catch(err){
-    console.error(err);
-    alert('Encryption failed: '+err);
-  }
-});
-
-btnLoad.addEventListener('click', ()=> fileInput.click());
-
-fileInput.addEventListener('change', async (e)=>{
-  const f = e.target.files[0];
-  if(!f) return;
-  try{
+/* ---------- Process Database File ---------- */
+async function processDatabaseFile(file, handle = null) {
+  try {
     // Read as ArrayBuffer for binary data
-    const arrayBuffer = await f.arrayBuffer();
+    const arrayBuffer = await file.arrayBuffer();
     const dataView = new DataView(arrayBuffer);
     
     // Read metadata length (first 2 bytes, little-endian)
@@ -1514,9 +1463,21 @@ fileInput.addEventListener('change', async (e)=>{
         db = obj;
         cryptoKey = key;
         currentFileMeta = meta;
+        currentFileHandle = handle; // Store the file handle for future saves
+        
         closeModal();
         setLockedUI(false);
         startTotpLoop();
+        
+        // After loading, prompt for save location if using File System API
+        if (isFileSystemAccessAvailable() && !handle) {
+          setTimeout(() => {
+            if (confirm('Would you like to select a save location for this database?')) {
+              btnSave.click();
+            }
+          }, 500);
+        }
+        
         alert('Database unlocked.');
       }catch(err){
         console.error(err);
@@ -1530,6 +1491,107 @@ fileInput.addEventListener('change', async (e)=>{
     alert('Failed to load file: '+err);
     fileInput.value='';
   }
+}
+
+/* ---------- Create DB / Lock / Save / Load ---------- */
+
+btnCreate.addEventListener('click', async ()=>{
+  showModal(`
+    <h2>Create new database</h2>
+    <label>Master password</label>
+    <div class="password-container">
+      <input id="p1" type="password" placeholder="Enter password" />
+    </div>
+    <label>Confirm password</label>
+    <div class="password-container">
+      <input id="p2" type="password" placeholder="Confirm password" />
+    </div>
+    <label>Argon2id parameters (you can leave defaults)</label>
+    <div class="row">
+      <div><label>Time (iterations)</label><input id="p_time" type="text" value="3" /></div>
+      <div><label>Memory (KiB)</label><input id="p_mem" type="text" value="65536" /></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div><label>Parallelism</label><input id="p_par" type="text" value="1" /></div>
+      <div><label>HashLen (bytes)</label><input id="p_hashlen" type="text" value="32" /></div>
+    </div>
+    <div class="actions">
+      <button id="c_cancel">Cancel</button>
+      <button id="c_create" class="primary">Create</button>
+    </div>
+  `);
+  modalEl.querySelector('#c_cancel').onclick = closeModal;
+  modalEl.querySelector('#c_create').onclick = async ()=>{
+    const p1 = modalEl.querySelector('#p1').value;
+    const p2 = modalEl.querySelector('#p2').value;
+    if(p1 !== p2){ alert('Passwords do not match'); return; }
+    if(!p1){ alert('Password required'); return; }
+    const params = {
+      time: parseInt(modalEl.querySelector('#p_time').value||'3',10),
+      mem: parseInt(modalEl.querySelector('#p_mem').value||'65536',10),
+      parallelism: parseInt(modalEl.querySelector('#p_par').value||'1',10),
+      hashLen: parseInt(modalEl.querySelector('#p_hashlen').value||'32',10)
+    };
+    const salt = randBytes(16);
+    try{
+      cryptoKey = await deriveKeyArgon2(p1, salt, params);
+    }catch(err){
+      alert('Argon2 derivation failed: '+err);
+      console.error(err);
+      return;
+    }
+    db = { entries: [] , createdAt: new Date().toISOString() };
+    currentFileMeta = { salt: u8ToB64(salt), params, version:1 };
+    currentFileHandle = null; // Reset file handle for new DB
+    
+    closeModal();
+    setLockedUI(false);
+    
+    // Prompt for save location when creating a new DB
+    setTimeout(() => {
+      btnSave.click();
+    }, 100);
+  };
+});
+
+btnAdd.addEventListener('click', ()=> openAddModal());
+
+btnLock.addEventListener('click', ()=>{
+  if(!cryptoKey){
+    return;
+  }
+  if(confirm('Lock and clear decrypted DB from memory?')){
+    cryptoKey = null;
+    db = { entries: [] };
+    currentFileMeta = null;
+    currentFileHandle = null;
+    selectedId = null;
+    setLockedUI(true);
+    if(totpInterval){ clearInterval(totpInterval); totpInterval=null; countdownEl.textContent='--'; }
+  }
+});
+
+btnSave.addEventListener('click', async ()=>{
+  const success = await saveWithFileSystemAPI();
+  if (success) {
+    // Visual feedback
+    const btn = document.getElementById('btnSave');
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Saved!';
+    btn.classList.add('success');
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.classList.remove('success');
+    }, 2000);
+  }
+});
+
+btnLoad.addEventListener('click', ()=> loadWithFileSystemAPI());
+
+fileInput.addEventListener('change', async (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  await processDatabaseFile(f);
 });
 
 /* ---------- CSV Import/Export Event Listeners ---------- */
@@ -1626,69 +1688,14 @@ function setupAutoSave() {
   });
 }
 
-
 async function autoSaveDb() {
   if (!cryptoKey || !currentFileMeta) return;
   
   try {
-    const plaintext = strToU8(JSON.stringify(db));
-    const iv = randBytes(12);
-    const ct = await aesGcmEncrypt(cryptoKey, plaintext, iv);
+    const fileContent = await prepareFileContent();
+    downloadFile(fileContent, `authenticator-backup-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`);
     
-    // Convert metadata to binary format
-    const saltBytes = b64ToU8(currentFileMeta.salt);
-    const timeBytes = numToUint32(currentFileMeta.params.time);
-    const memBytes = numToUint32(currentFileMeta.params.mem);
-    const parallelismBytes = new Uint8Array([currentFileMeta.params.parallelism]);
-    const hashLenBytes = new Uint8Array([currentFileMeta.params.hashLen]);
-    const versionBytes = new Uint8Array([currentFileMeta.version || 1]);
-    
-    const metaBytes = new Uint8Array(1 + saltBytes.length + 4 + 4 + 1 + 1);
-    
-    let offset = 0;
-    metaBytes.set(versionBytes, offset); offset += 1;
-    metaBytes.set(saltBytes, offset); offset += saltBytes.length;
-    metaBytes.set(timeBytes, offset); offset += 4;
-    metaBytes.set(memBytes, offset); offset += 4;
-    metaBytes.set(parallelismBytes, offset); offset += 1;
-    metaBytes.set(hashLenBytes, offset);
-    
-    // Create final binary
-    const metaLength = numToUint16(metaBytes.length);
-    const combined = new Uint8Array(2 + metaBytes.length + iv.length + ct.length);
-    
-    offset = 0;
-    combined.set(metaLength, offset); offset += 2;
-    combined.set(metaBytes, offset); offset += metaBytes.length;
-    combined.set(iv, offset); offset += iv.length;
-    combined.set(ct, offset);
-    
-    // Try to save using File System Access API if we have a handle
-    if (fileHandle) {
-      const success = await writeFileWithHandle(fileHandle, combined);
-      if (success) {
-        console.log('Database auto-saved successfully using File System API');
-        return;
-      }
-    }
-    
-    // Fallback: Save as download
-    const blob = new Blob([combined], {type: 'application/octet-stream'});
-    const filename = `authenticator-backup-${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}.auth`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Wait a moment for the download to start
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Clean up
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    
-    console.log('Database auto-saved successfully using download fallback');
+    console.log('Database auto-saved successfully');
   } catch (err) {
     console.error('Auto-save failed:', err);
     throw err;
