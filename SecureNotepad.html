@@ -561,16 +561,32 @@
   }
 
   function isEncrypted(content) {
-    // Check if content might be encrypted by verifying it has the expected structure
-    try {
-      if (!content) return false;
-      const data = Uint8Array.from(atob(content), c => c.charCodeAt(0));
-      // Should have key file flag + salt (16 bytes) + IV (12 bytes) + at least some data
-      return data.length > 29;
-    } catch (e) {
-      return false;
-    }
+  // More accurate encryption detection
+  try {
+    if (!content) return false;
+    
+    // Check if it looks like base64 first
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(content)) return false;
+    
+    const data = Uint8Array.from(atob(content), c => c.charCodeAt(0));
+    
+    // Proper encrypted data structure check:
+    // Byte 0: Key file flag (0 or 1)
+    // Bytes 1-16: Salt (must be exactly 16 bytes)
+    // Bytes 17-28: IV (must be exactly 12 bytes)  
+    // Bytes 29+: Encrypted data
+    if (data.length <= 29) return false;
+    
+    // Check key file flag is valid
+    const keyFileFlag = data[0];
+    if (keyFileFlag !== 0 && keyFileFlag !== 1) return false;
+    
+    // If we got this far, it's likely properly encrypted
+    return true;
+  } catch (e) {
+    return false;
   }
+}
 
   function updateEncryptionStatus() {
     const n = state.notes[state.active];
@@ -630,26 +646,22 @@
     else { elTitle.value=''; elEditor.value=''; updateStatus(); }
   }
   function openNote(id, focusEditor=false){
-    const n = state.notes[id]; if(!n) return;
-    state.active = id;
-    elTitle.value = n.title;
-    
-    // Check if content is encrypted - show the Base64 content directly
-    if (n.encrypted || isEncrypted(n.content)) {
-      elEditor.value = n.content;
-      elEditor.readOnly = true;
-    } else {
-      elEditor.value = n.content;
-      elEditor.readOnly = false;
-    }
-    
-    state.dirty = false;
-    updateStatus();
-    updateEncryptionStatus();
-    highlightActive();
-    if(focusEditor) elEditor.focus();
-    persist();
-  }
+  const n = state.notes[id]; if(!n) return;
+  state.active = id;
+  elTitle.value = n.title;
+  
+  // FIXED: Only mark as read-only if actually encrypted
+  const actuallyEncrypted = n.encrypted || isEncrypted(n.content);
+  elEditor.value = n.content;
+  elEditor.readOnly = actuallyEncrypted; // Only lock if truly encrypted
+  
+  state.dirty = false;
+  updateStatus();
+  updateEncryptionStatus();
+  highlightActive();
+  if(focusEditor) elEditor.focus();
+  persist();
+}
   function updateActiveNote({title, content}){
     const n = state.notes[state.active]; if(!n) return;
     if(typeof title==='string') n.title = title;
